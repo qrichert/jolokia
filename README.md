@@ -6,19 +6,37 @@
 [![crates.io](https://img.shields.io/crates/d/jolokia?logo=rust&logoColor=white&color=orange)](https://crates.io/crates/jolokia)
 [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/qrichert/jolokia/ci.yml?label=tests)](https://github.com/qrichert/jolokia/actions)
 
-_Encrypt and decrypt stuff._
+_Strong encryption, made simple._
 
-## Roadman
+## Examples
 
-- [ ] `genkey`
-- [ ] `encrypt`
-- [ ] `decrypt`
-  - [ ] From CLI argument.
+```console
+$ jolokia genkey
+hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w=
+
+$ jolokia encrypt "hello, world!" --key hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w=
+l/wW9dop4IvF5fR6aRa7WkZKsRnUwG177Q35ej9WMVzhJYr0t8njDi0=
+
+# Same as passing `--key`.
+$ export JOLOKIA_CIPHER_KEY=hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w=
+
+$ jolokia decrypt l/wW9dop4IvF5fR6aRa7WkZKsRnUwG177Q35ej9WMVzhJYr0t8njDi0=
+hello, world!
+```
+
+## Roadmap
+
+- [x] `genkey`
+- [x] `encrypt`
+- [x] `decrypt`
+  - [x] From CLI argument.
   - [ ] From `stdin`.
   - [ ] From file.
   - [ ] From directory.
 - [ ] `--help`
-- [ ] `--algorithm`
+- [ ] `--file`
+- [ ] Read from stdin.
+- [ ] Choose `--algorithm` (`JOLOKIA_ALGORITHM`).
   - [x] Chacha20Poly1305
   - [ ] ROT13 (useless, but forces generic design).
 

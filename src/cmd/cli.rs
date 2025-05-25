@@ -1,3 +1,5 @@
+pub const KEY_ENV_VAR: &str = "JOLOKIA_CIPHER_KEY";
+
 #[derive(Debug, Eq, PartialEq)]
 pub enum Command {
     GenKey,
@@ -9,6 +11,8 @@ pub enum Command {
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct Args {
     pub command: Option<Command>,
+    pub key: Option<String>,
+    pub message: Option<String>,
     pub short_help: bool,
     pub long_help: bool,
     pub version: bool,
@@ -21,24 +25,37 @@ impl Args {
     {
         let mut args = Self::default();
 
-        #[allow(clippy::while_let_on_iterator)] // TODO: Need it for `--key`.
         while let Some(arg) = cli_args.next() {
             let some_command = args.command.is_some();
+            let some_key = args.key.is_some();
+            let some_message = args.message.is_some();
 
             match arg.as_ref() {
                 "genkey" if !some_command => args.command = Some(Command::GenKey),
                 "encrypt" if !some_command => args.command = Some(Command::Encrypt),
                 "decrypt" if !some_command => args.command = Some(Command::Decrypt),
+                "-k" | "--key" if !some_key => args.key = cli_args.next().map(|k| k.to_string()),
                 "-h" => args.short_help = true,
                 "--help" => args.long_help = true,
                 "-V" | "--version" => args.version = true,
+                message if some_command && !some_message => {
+                    args.message = Some(message.to_string());
+                }
                 unknown => {
                     return Err(format!("Unknown argument: '{unknown}'"));
                 }
             }
         }
 
+        if args.key.is_none() {
+            args.key = Self::maybe_get_key_from_env();
+        }
+
         Ok(args)
+    }
+
+    fn maybe_get_key_from_env() -> Option<String> {
+        std::env::var(KEY_ENV_VAR).ok()
     }
 }
 
@@ -56,8 +73,8 @@ mod tests {
 
     #[test]
     fn second_command_does_not_override_genkey() {
-        let err = Args::build_from_args(["genkey", "encrypt"].iter()).unwrap_err();
-        assert!(err.contains("'encrypt'"));
+        let args = Args::build_from_args(["genkey", "encrypt"].iter()).unwrap();
+        assert!(args.command.is_some_and(|c| c == Command::GenKey));
     }
 
     #[test]
@@ -68,8 +85,8 @@ mod tests {
 
     #[test]
     fn second_command_does_not_override_encrypt() {
-        let err = Args::build_from_args(["encrypt", "decrypt"].iter()).unwrap_err();
-        assert!(err.contains("'decrypt'"));
+        let args = Args::build_from_args(["encrypt", "decrypt"].iter()).unwrap();
+        assert!(args.command.is_some_and(|c| c == Command::Encrypt));
     }
 
     #[test]
@@ -80,8 +97,8 @@ mod tests {
 
     #[test]
     fn second_command_does_not_override_decrypt() {
-        let err = Args::build_from_args(["decrypt", "genkey"].iter()).unwrap_err();
-        assert!(err.contains("'genkey'"));
+        let args = Args::build_from_args(["decrypt", "genkey"].iter()).unwrap();
+        assert!(args.command.is_some_and(|c| c == Command::Decrypt));
     }
 
     #[test]

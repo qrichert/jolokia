@@ -1,4 +1,5 @@
 pub mod cli;
+pub mod ui;
 
 use std::io::Write;
 
