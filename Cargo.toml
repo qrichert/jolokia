@@ -17,5 +17,8 @@ strip = true
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin_include)'] }
 
 [dependencies]
+# Human-readable encryption.
+base64 = "0.22.1"
+chacha20poly1305 = "0.10.1"
 # Output text through a pager.
 lessify = "0.4.0"

@@ -24,12 +24,15 @@ fn main() {
     } else if args.version {
         version();
     } else if let Some(command) = args.command {
-        if let Err(code) = match command {
+        if let Err(reason) = match command {
             cli::Command::GenKey => cmd::genkey(),
-            cli::Command::Encrypt => cmd::encrypt(),
-            cli::Command::Decrypt => cmd::decrypt(),
+            cli::Command::Encrypt => cmd::encrypt(cmd::DEFAULT_KEY, "hi"),
+            cli::Command::Decrypt => {
+                cmd::decrypt(cmd::DEFAULT_KEY, "wWaYozIrI6og7mWb8YTn/lMb22QZ3KeP2xVfLRaT")
+            }
         } {
-            process::exit(code);
+            eprintln!("{reason}");
+            process::exit(1);
         }
     } else {
         // No arguments.

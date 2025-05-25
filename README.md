@@ -19,6 +19,8 @@ _Encrypt and decrypt stuff._
   - [ ] From directory.
 - [ ] `--help`
 - [ ] `--algorithm`
+  - [x] Chacha20Poly1305
+  - [ ] ROT13 (useless, but forces generic design).
 
 ## Installation
 
