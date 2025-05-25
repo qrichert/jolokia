@@ -1,0 +1,19 @@
+[package]
+name = "jolokia"
+version = "0.0.0"
+edition = "2024"
+authors = ["Quentin Richert <noreply@richert.co>"]
+description = "Encrypt and decrypt stuff."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/qrichert/jolokia.git"
+readme = "README.md"
+keywords = ["cryptography", "cli"]
+categories = ["command-line-utilities"]
+
+[profile.release]
+strip = true
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin_include)'] }
+
+[dependencies]
