@@ -8,6 +8,18 @@
 
 _Encrypt and decrypt stuff._
 
+## Roadman
+
+- [ ] `genkey`
+- [ ] `encrypt`
+- [ ] `decrypt`
+  - [ ] From CLI argument.
+  - [ ] From `stdin`.
+  - [ ] From file.
+  - [ ] From directory.
+- [ ] `--help`
+- [ ] `--algorithm`
+
 ## Installation
 
 ### Directly

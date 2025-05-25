@@ -1,6 +1,6 @@
 [package]
 name = "jolokia"
-version = "0.0.0"
+version = "0.1.0"
 edition = "2024"
 authors = ["Quentin Richert <noreply@richert.co>"]
 description = "Encrypt and decrypt stuff."
@@ -17,3 +17,5 @@ strip = true
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin_include)'] }
 
 [dependencies]
+# Output text through a pager.
+lessify = "0.4.0"
