@@ -113,6 +113,7 @@ dependencies = [
 name = "jolokia"
 version = "0.1.0"
 dependencies = [
+ "aead",
  "base64",
  "chacha20poly1305",
  "lessify",

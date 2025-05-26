@@ -17,8 +17,11 @@ strip = true
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin_include)'] }
 
 [dependencies]
+# Authenticated Encryption with Associated Data (AEAD) traits.
+aead = { version = "0.5.2", features = ["stream"] }
 # Human-readable encryption.
 base64 = "0.22.1"
+# Chacha20-Poly1305 algorithm implementation.
 chacha20poly1305 = "0.10.1"
 # Output text through a pager.
 lessify = "0.4.0"

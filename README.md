@@ -38,7 +38,7 @@ hello, world!
   - [ ] From directory (`-R`, `--recursive`).
 - [ ] `--help`
 - [ ] `--raw` (for non-text files).
-- [ ] Streaming encryption (will likely break existing messages!).
+- [x] Streaming encryption (will likely break existing messages!).
 - [ ] Choose `--algorithm` (`JOLOKIA_ALGORITHM`).
   - [x] Chacha20-Poly1305
   - [ ] ROT13 (useless, but forces generic design).
