@@ -1,4 +1,5 @@
 use std::fs;
+use std::io::{self, IsTerminal, Read};
 use std::path::PathBuf;
 
 pub const KEY_ENV_VAR: &str = "JOLOKIA_CIPHER_KEY";
@@ -50,6 +51,7 @@ impl Args {
             }
         }
 
+        // If no key, try `env`.
         if args.key.is_none() {
             args.key = Self::maybe_get_key_from_env();
         }
@@ -59,6 +61,11 @@ impl Args {
             if let Some(key) = Self::maybe_get_key_from_file(key) {
                 args.key = Some(key);
             }
+        }
+
+        // If not message, try `stdin`.
+        if args.message.is_none() {
+            args.message = Self::maybe_get_message_from_stdin();
         }
 
         Ok(args)
@@ -83,6 +90,27 @@ impl Args {
                 }
             }
         }
+        None
+    }
+
+    fn maybe_get_message_from_stdin() -> Option<String> {
+        // If the descriptor/handle refers to a terminal/tty, there is
+        // nothing in stdin to be consumed. This check is needed or else
+        // `read_to_string()` hangs waiting for EOF if `stdin` is empty.
+        if io::stdin().is_terminal() {
+            return None;
+        }
+
+        let mut buffer = String::new();
+        io::stdin().read_to_string(&mut buffer).ok()?;
+        // Sometimes trailing newlines get added (not base64 so
+        // we can safely trim them).
+
+        let message = buffer.trim_end();
+        if !message.is_empty() {
+            return Some(message.to_string());
+        }
+
         None
     }
 }

@@ -31,17 +31,16 @@ hello, world!
 ## Roadmap
 
 - [x] `genkey`
-- [x] `encrypt`
-- [x] `decrypt`
+- [x] `encrypt`/`decrypt`
   - [x] From CLI argument.
-  - [ ] From `stdin`.
-  - [ ] From file.
-  - [ ] From directory.
+  - [x] From `stdin`.
+  - [ ] From file (show example with `tar`).
+  - [ ] From directory (`-R`, `--recursive`).
 - [ ] `--help`
-- [ ] `--file`
-- [ ] Read from stdin.
+- [ ] `--raw` (for non-text files).
+- [ ] Streaming encryption (will likely break existing messages!).
 - [ ] Choose `--algorithm` (`JOLOKIA_ALGORITHM`).
-  - [x] Chacha20Poly1305
+  - [x] Chacha20-Poly1305
   - [ ] ROT13 (useless, but forces generic design).
 
 ## Installation
