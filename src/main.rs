@@ -130,11 +130,70 @@ fn long_help() {
         "\
 {help}
 What does {package} do?
-  Lorem ipsum {bin}.
+  TODO: Lorem ipsum {bin}.
+  symmetric encryption (explain),
+  need a key
+
+Algorithms:
+  {u}Name{rt}                 {u}Key Size{rt}
+  Chacha20-Poly1305    32 bytes (256-bits)
+
+Key:
+  In {package}, a key is always a base64-encoded string of bytes. The
+  size of the key varies depending on the selected algorithm.
+
+  To generate a new key run:
+
+      {h}${rt} jolokia genkey
+      hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w=
+
+  To use the key, pass it as `--key` or `-k`:
+
+      {h}${rt} jolokia encrypt \"foo\" --key hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w=
+      FTqHwIHQJ+IsFMiiYkioNmGoD+3zMp4jRpGLQIcNmw==
+
+  Or as an environment variable (but `--key` has precedence):
+
+      {h}${rt} export {key_env_var}=hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w=
+      {h}${rt} jolokia encrypt \"foo\"
+      FTqHwIHQJ+IsFMiiYkioNmGoD+3zMp4jRpGLQIcNmw==
+
+  The key can also be the name of a file that contains a key:
+
+      {h}${rt} echo hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w= > /secrets/{bin}.key
+      {h}${rt} jolokia decrypt --key /secrets/{bin}.key FTqHwIHQJ+IsFMiiYkioNmGoD+3zMp4jRpGLQIcNmw==
+      foo
+
+  To set a key permanently, the recommended solution is to point the
+  environment variable to a file:
+
+      {h}${rt} echo hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w= > ~/.{bin}.key
+      {h}${rt} echo '{key_env_var}=\"$HOME/.{bin}.key\"' >> ~/.bashrc
+
+Message:
+  The message can be passed on the command line:
+
+      {h}${rt} jolokia encrypt \"bar\"
+      YfCpYYm7tVjxbs1g28K2sKvCMu3mF2/Cl3s4toQd+A==
+
+  Or via `stdin` (but the command line has precedence):
+
+      {h}${rt} cat bar.txt | jolokia encrypt
+      YfCpYYm7tVjxbs1g28K2sKvCMu3mF2/Cl3s4toQd+A==
+
+  By definition, you can round-trip it:
+
+      {h}${rt} jolokia encrypt \"hello, world\" > encrypted.txt
+      {h}${rt} cat encrypted.txt | jolokia decrypt
+      hello, world
 ",
         help = short_help_message(),
         bin = env!("CARGO_BIN_NAME"),
         package = env!("CARGO_PKG_NAME"),
+        key_env_var = cli::KEY_ENV_VAR,
+        h = ui::Color::maybe_color(ui::color::HIGHLIGHT),
+        u = ui::Color::maybe_color(ui::color::UNDERLINE),
+        rt = ui::Color::maybe_color(ui::color::RESET),
     ));
 }
 
