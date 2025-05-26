@@ -1,3 +1,6 @@
+use std::fs;
+use std::path::PathBuf;
+
 pub const KEY_ENV_VAR: &str = "JOLOKIA_CIPHER_KEY";
 
 #[derive(Debug, Eq, PartialEq)]
@@ -50,12 +53,37 @@ impl Args {
         if args.key.is_none() {
             args.key = Self::maybe_get_key_from_env();
         }
+        if let Some(ref key) = args.key {
+            // If the given key is a file, use the content of the file
+            // as the key.
+            if let Some(key) = Self::maybe_get_key_from_file(key) {
+                args.key = Some(key);
+            }
+        }
 
         Ok(args)
     }
 
     fn maybe_get_key_from_env() -> Option<String> {
         std::env::var(KEY_ENV_VAR).ok()
+    }
+
+    /// Try to extract non empty key from potentially existing file.
+    ///
+    /// The file _must_ exist, _must_ be readable, and _must_ be
+    /// non-empty. If these conditions are met, the content of the file
+    /// is returned (trailing whitespace gets removed).
+    fn maybe_get_key_from_file(maybe_file: &str) -> Option<String> {
+        let maybe_file = PathBuf::from(maybe_file);
+        if maybe_file.is_file() {
+            if let Ok(key) = fs::read_to_string(&maybe_file) {
+                let key = key.trim_end();
+                if !key.is_empty() {
+                    return Some(key.to_string());
+                }
+            }
+        }
+        None
     }
 }
 

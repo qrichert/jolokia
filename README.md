@@ -22,6 +22,10 @@ $ export JOLOKIA_CIPHER_KEY=hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w=
 
 $ jolokia decrypt l/wW9dop4IvF5fR6aRa7WkZKsRnUwG177Q35ej9WMVzhJYr0t8njDi0=
 hello, world!
+
+# The key can be stored inside a file as well.
+$ jolokia decrypt --key /secrets/jolokia.key l/wW9dop4IvF5fR6aRa7WkZKsRnUwG177Q35ej9WMVzhJYr0t8njDi0=
+hello, world!
 ```
 
 ## Roadmap
