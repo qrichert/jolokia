@@ -6,6 +6,8 @@ pub enum Error {
     Encrypt,
     Decrypt,
     Base64Decode(String),
+    Base64StreamEncode(String),
+    Base64StreamDecode(String),
     Read(String),
     Write(String),
 }
@@ -21,6 +23,12 @@ Could not decrypt input.
 You are likely using the wrong key, or the encrypted data is broken."
             ),
             Self::Base64Decode(reason) => write!(f, "Could not decode base64: {reason}"),
+            Self::Base64StreamEncode(reason) => {
+                write!(f, "Could not encode base64 stream: {reason}")
+            }
+            Self::Base64StreamDecode(reason) => {
+                write!(f, "Could not decode base64 stream: {reason}")
+            }
             Self::Read(reason) => write!(f, "Could not read from input: {reason}"),
             Self::Write(reason) => write!(f, "Could not write to output: {reason}"),
         }
@@ -80,4 +88,23 @@ pub trait DecodeBase64 {
     ///
     /// Errors if `self` does not contain valid base64.
     fn decode_base64(&self) -> Result<Vec<u8>>;
+}
+
+pub trait EncodeBase64Stream {
+    /// Encode `self` in base64 and stream as string to writer.
+    ///
+    /// # Errors
+    ///
+    /// Errors if writing fails.
+    fn encode_base64_stream<W: Write>(&mut self, writer: &mut W) -> Result<()>;
+}
+
+pub trait DecodeBase64Stream {
+    /// Decode `self` in base64 and stream as bytes to writer.
+    ///
+    /// # Errors
+    ///
+    /// Errors if `self` does not contain valid base64, or if writing
+    /// fails.
+    fn decode_base64_stream<W: Write>(&mut self, writer: &mut W) -> Result<()>;
 }
