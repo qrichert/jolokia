@@ -3,26 +3,26 @@ pub mod ui;
 
 use std::io::Write;
 
-use jolokia::{Chacha20Poly1305, Cipher, FromBase64, ToBase64};
+use jolokia::{Chacha20Poly1305, Cipher, DecodeBase64, EncodeBase64};
 
 /// Generic cipher key used by jolokia (this is _not secure_!).
 pub const DEFAULT_KEY: &str = "edLKPT4jYaabmMwuKzgQwklMC9HxTYmhVY7qln4yrJM=";
 
 #[allow(clippy::unnecessary_wraps)] // Keep return type consistent.
 pub fn genkey() -> Result<(), String> {
-    let key = Chacha20Poly1305::generate_key().to_base64();
+    let key = Chacha20Poly1305::generate_key().encode_base64();
     println!("{key}");
     Ok(())
 }
 
 pub fn encrypt(key: &str, plaintext: &str) -> Result<(), String> {
-    let key = match key.from_base64() {
+    let key = match key.decode_base64() {
         Ok(key) => key,
         Err(reason) => return Err(reason.to_string()),
     };
     match Chacha20Poly1305::encrypt(&key, plaintext.as_bytes()) {
         Ok(ciphertext) => {
-            let base64 = ciphertext.to_base64();
+            let base64 = ciphertext.encode_base64();
             _ = writeln!(std::io::stdout(), "{base64}");
             Ok(())
         }
@@ -31,11 +31,11 @@ pub fn encrypt(key: &str, plaintext: &str) -> Result<(), String> {
 }
 
 pub fn decrypt(key: &str, ciphertext: &str) -> Result<(), String> {
-    let key = match key.from_base64() {
+    let key = match key.decode_base64() {
         Ok(key) => key,
         Err(reason) => return Err(reason.to_string()),
     };
-    let ciphertext = match ciphertext.from_base64() {
+    let ciphertext = match ciphertext.decode_base64() {
         Ok(ciphertext) => ciphertext,
         Err(reason) => return Err(reason.to_string()),
     };

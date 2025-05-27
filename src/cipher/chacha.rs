@@ -52,8 +52,8 @@ impl traits::Cipher for Chacha20Poly1305 {
 
     fn encrypt_stream<R: Read, W: Write>(
         key: &[u8],
-        mut reader: R,
-        mut writer: W,
+        reader: &mut R,
+        writer: &mut W,
     ) -> traits::Result<()> {
         let key = Key::from_slice(key);
         let cipher = ChaCha20Poly1305::new(key);
@@ -98,8 +98,8 @@ impl traits::Cipher for Chacha20Poly1305 {
 
     fn decrypt_stream<R: Read, W: Write>(
         key: &[u8],
-        mut reader: R,
-        mut writer: W,
+        reader: &mut R,
+        writer: &mut W,
     ) -> traits::Result<()> {
         let key = Key::from_slice(key);
         let cipher = ChaCha20Poly1305::new(key);
@@ -139,7 +139,7 @@ pub mod tests {
     use std::io::Cursor;
 
     use super::*;
-    use crate::{Cipher, FromBase64};
+    use crate::{Cipher, DecodeBase64};
 
     // Note: We can't really test encryption alone, because the result
     // is not deteministic (the nonce prevents identical plaintexts from
@@ -148,7 +148,7 @@ pub mod tests {
     #[test]
     fn chacha_encrypt_decrypt_roundtrip() {
         let key = "aZZfFANQlAtS5jxyyzHh0R8BWpHGDR2iqsBqROXzPkQ="
-            .from_base64()
+            .decode_base64()
             .unwrap();
         let plaintext = b"hello, world!";
 
@@ -163,7 +163,7 @@ pub mod tests {
     #[test]
     fn chacha_encrypt_decrypt_streaming_roundtrip_shorter_than_a_chunk() {
         let key = "aZZfFANQlAtS5jxyyzHh0R8BWpHGDR2iqsBqROXzPkQ="
-            .from_base64()
+            .decode_base64()
             .unwrap();
         let plaintext = b"hello, world!";
 
@@ -175,13 +175,15 @@ pub mod tests {
         );
 
         let mut encrypted = Vec::new();
-        Chacha20Poly1305::encrypt_stream(&key, Cursor::new(plaintext), &mut encrypted).unwrap();
+        Chacha20Poly1305::encrypt_stream(&key, &mut Cursor::new(plaintext), &mut encrypted)
+            .unwrap();
         dbg!(&encrypted);
 
         assert!(encrypted.len() > 8);
 
         let mut decrypted = Vec::new();
-        Chacha20Poly1305::decrypt_stream(&key, Cursor::new(encrypted), &mut decrypted).unwrap();
+        Chacha20Poly1305::decrypt_stream(&key, &mut Cursor::new(encrypted), &mut decrypted)
+            .unwrap();
         let decrypted = String::from_utf8_lossy(&decrypted);
         dbg!(&decrypted);
 
@@ -191,7 +193,7 @@ pub mod tests {
     #[test]
     fn chacha_encrypt_decrypt_streaming_roundtrip_same_length_as_a_chunk() {
         let key = "aZZfFANQlAtS5jxyyzHh0R8BWpHGDR2iqsBqROXzPkQ="
-            .from_base64()
+            .decode_base64()
             .unwrap();
         let mut plaintext = b"hello, world!".repeat(316);
         plaintext.extend(b"abcd");
@@ -199,13 +201,15 @@ pub mod tests {
         assert_eq!(plaintext.len(), 4096 + 16);
 
         let mut encrypted = Vec::new();
-        Chacha20Poly1305::encrypt_stream(&key, Cursor::new(plaintext), &mut encrypted).unwrap();
+        Chacha20Poly1305::encrypt_stream(&key, &mut Cursor::new(plaintext), &mut encrypted)
+            .unwrap();
         dbg!(&encrypted);
 
         assert!(encrypted.len() > 8);
 
         let mut decrypted = Vec::new();
-        Chacha20Poly1305::decrypt_stream(&key, Cursor::new(encrypted), &mut decrypted).unwrap();
+        Chacha20Poly1305::decrypt_stream(&key, &mut Cursor::new(encrypted), &mut decrypted)
+            .unwrap();
         let decrypted = String::from_utf8_lossy(&decrypted);
         dbg!(&decrypted);
 
@@ -215,7 +219,7 @@ pub mod tests {
     #[test]
     fn chacha_encrypt_decrypt_streaming_roundtrip_longer_than_a_chunk() {
         let key = "aZZfFANQlAtS5jxyyzHh0R8BWpHGDR2iqsBqROXzPkQ="
-            .from_base64()
+            .decode_base64()
             .unwrap();
         let plaintext = b"hello, world!".repeat(320);
 
@@ -227,13 +231,15 @@ pub mod tests {
         );
 
         let mut encrypted = Vec::new();
-        Chacha20Poly1305::encrypt_stream(&key, Cursor::new(plaintext), &mut encrypted).unwrap();
+        Chacha20Poly1305::encrypt_stream(&key, &mut Cursor::new(plaintext), &mut encrypted)
+            .unwrap();
         dbg!(&encrypted);
 
         assert!(encrypted.len() > 8);
 
         let mut decrypted = Vec::new();
-        Chacha20Poly1305::decrypt_stream(&key, Cursor::new(encrypted), &mut decrypted).unwrap();
+        Chacha20Poly1305::decrypt_stream(&key, &mut Cursor::new(encrypted), &mut decrypted)
+            .unwrap();
         let decrypted = String::from_utf8_lossy(&decrypted);
         dbg!(&decrypted);
 

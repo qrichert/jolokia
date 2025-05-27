@@ -56,7 +56,7 @@ pub trait Cipher {
     ///
     /// Errors if encryption fails, or if read/write fails. Encryption
     /// failures are opaque due to security concerns.
-    fn encrypt_stream<R: Read, W: Write>(key: &[u8], reader: R, writer: W) -> Result<()>;
+    fn encrypt_stream<R: Read, W: Write>(key: &[u8], reader: &mut R, writer: &mut W) -> Result<()>;
 
     /// Encrypt stream of plain bytes with key.
     ///
@@ -64,21 +64,20 @@ pub trait Cipher {
     ///
     /// Errors if decryption fails, or if read/write fails. Decryption
     /// failures are opaque due to security concerns.
-    fn decrypt_stream<R: Read, W: Write>(key: &[u8], reader: R, writer: W) -> Result<()>;
+    fn decrypt_stream<R: Read, W: Write>(key: &[u8], reader: &mut R, writer: &mut W) -> Result<()>;
 }
 
-pub trait ToBase64 {
+pub trait EncodeBase64 {
     /// Encode `self` in base64 string.
     #[must_use]
-    fn to_base64(&self) -> String;
+    fn encode_base64(&self) -> String;
 }
 
-pub trait FromBase64 {
+pub trait DecodeBase64 {
     /// Decode base64-encoded `self` to bytes.
     ///
     /// # Errors
     ///
     /// Errors if `self` does not contain valid base64.
-    #[allow(clippy::wrong_self_convention)]
-    fn from_base64(&self) -> Result<Vec<u8>>;
+    fn decode_base64(&self) -> Result<Vec<u8>>;
 }
