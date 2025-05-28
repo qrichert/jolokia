@@ -6,14 +6,14 @@ use aead::stream::{DecryptorBE32, EncryptorBE32};
 use chacha20poly1305::aead::{Aead, AeadCore, KeyInit};
 use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce};
 
-use super::traits;
+use super::traits::{self, Cipher, Error};
 
 // TODO: Include name and version in ciphertext, this will, in the
 //  future let us change version and reroute to the corret impl.
 
 pub struct Chacha20Poly1305;
 
-impl traits::Cipher for Chacha20Poly1305 {
+impl Cipher for Chacha20Poly1305 {
     /// Generate a 32-bytes (256-bit) encryption key.
     fn generate_key() -> Vec<u8> {
         let key = ChaCha20Poly1305::generate_key(&mut OsRng);
@@ -27,7 +27,7 @@ impl traits::Cipher for Chacha20Poly1305 {
         let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng);
 
         let Ok(ciphertext) = cipher.encrypt(&nonce, plaintext) else {
-            return Err(traits::Error::Encrypt);
+            return Err(Error::Encrypt);
         };
 
         // Prepend cipher text with nonce for retrieval during decryption.
@@ -45,7 +45,7 @@ impl traits::Cipher for Chacha20Poly1305 {
         let nonce = Nonce::from_slice(nonce);
 
         let Ok(plaintext) = cipher.decrypt(nonce, ciphertext) else {
-            return Err(traits::Error::Decrypt);
+            return Err(Error::Decrypt);
         };
         Ok(plaintext)
     }
@@ -71,9 +71,9 @@ impl traits::Cipher for Chacha20Poly1305 {
         OsRng.fill_bytes(&mut nonce_prefix);
         let nonce_prefix = GenericArray::from_slice(&nonce_prefix);
 
-        if let Err(reason) = writer.write_all(nonce_prefix) {
-            return Err(traits::Error::Write(reason.to_string()));
-        }
+        writer
+            .write_all(nonce_prefix)
+            .map_err(|e| Error::Write(e.to_string()))?;
 
         let mut encryptor = EncryptorBE32::from_aead(cipher, nonce_prefix);
 
@@ -86,29 +86,29 @@ impl traits::Cipher for Chacha20Poly1305 {
             //     4096-byte ciphertext + 16-byte AEAD auth tag
             let chunk = encryptor
                 .encrypt_next(&buffer[..n])
-                .map_err(|_| traits::Error::Encrypt)?;
+                .map_err(|_| Error::Encrypt)?;
 
             // 4-bytes (32-bits) big-endian chunk length prefix.
             // Length-framing enables reading _exact_ chunks during
             // decryption, and so detect corruption or truncation.
             let chunk_len = u32::try_from(chunk.len())
                 // `chunk.len()` sould be `4096 + 16 = 4112`.
-                .map_err(|_| traits::Error::Encrypt)?
+                .map_err(|_| Error::Encrypt)?
                 .to_be_bytes();
             writer
                 .write_all(&chunk_len)
-                .map_err(|e| traits::Error::Write(e.to_string()))?;
+                .map_err(|e| Error::Write(e.to_string()))?;
 
             writer
                 .write_all(&chunk)
-                .map_err(|e| traits::Error::Write(e.to_string()))?;
+                .map_err(|e| Error::Write(e.to_string()))?;
         }
 
         // Explicit EOF marker (4-bytes of 0).
         // This can be interpreted as "next chunk has 0 length => EOF".
         writer
             .write_all(&0u32.to_be_bytes())
-            .map_err(|e| traits::Error::Write(e.to_string()))?;
+            .map_err(|e| Error::Write(e.to_string()))?;
 
         Ok(())
     }
@@ -119,7 +119,7 @@ impl traits::Cipher for Chacha20Poly1305 {
         writer: &mut W,
     ) -> traits::Result<()> {
         if usize::BITS < u32::BITS {
-            return Err(traits::Error::Platform(
+            return Err(Error::Platform(
                 "< 32-bit platforms are not supported.".to_string(),
             ));
         }
@@ -128,9 +128,9 @@ impl traits::Cipher for Chacha20Poly1305 {
         let cipher = ChaCha20Poly1305::new(key);
 
         let mut nonce_prefix = [0u8; 7];
-        if let Err(reason) = reader.read_exact(&mut nonce_prefix) {
-            return Err(traits::Error::Read(reason.to_string()));
-        }
+        reader
+            .read_exact(&mut nonce_prefix)
+            .map_err(|e| Error::Read(e.to_string()))?;
         let nonce_prefix = GenericArray::from_slice(&nonce_prefix);
 
         let mut decryptor = DecryptorBE32::from_aead(cipher, nonce_prefix);
@@ -144,7 +144,7 @@ impl traits::Cipher for Chacha20Poly1305 {
                 .read_exact(&mut chunk_len)
                 // Note that `ErrorKind::UnexpectedEof` _is_ in fact
                 // unexpected. Real EOFs are marked by chunk length 0.
-                .map_err(|e| traits::Error::Read(e.to_string()))?;
+                .map_err(|e| Error::Read(e.to_string()))?;
             // Includes 16-bytes suffix for the AEAD auth tag.
             let chunk_len = u32::from_be_bytes(chunk_len) as usize;
 
@@ -157,15 +157,15 @@ impl traits::Cipher for Chacha20Poly1305 {
             chunk_buf.resize(chunk_len, 0);
             reader
                 .read_exact(&mut chunk_buf)
-                .map_err(|e| traits::Error::Read(e.to_string()))?;
+                .map_err(|e| Error::Read(e.to_string()))?;
 
             let chunk = decryptor
                 .decrypt_next(&*chunk_buf)
-                .map_err(|_| traits::Error::Decrypt)?;
+                .map_err(|_| Error::Decrypt)?;
 
             writer
                 .write_all(&chunk)
-                .map_err(|e| traits::Error::Write(e.to_string()))?;
+                .map_err(|e| Error::Write(e.to_string()))?;
         }
 
         Ok(())
