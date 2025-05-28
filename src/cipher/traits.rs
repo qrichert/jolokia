@@ -5,6 +5,7 @@ use std::io::{Read, Write};
 pub enum Error {
     Encrypt,
     Decrypt,
+    Algorithm,
     Base64Decode(String),
     Base64StreamEncode(String),
     Base64StreamDecode(String),
@@ -23,6 +24,7 @@ impl fmt::Display for Error {
 Could not decrypt input.
 You are likely using the wrong key, or the encrypted data is broken."
             ),
+            Self::Algorithm => write!(f, "Incompatible algorithm."),
             Self::Base64Decode(reason) => write!(f, "Could not decode base64: {reason}"),
             Self::Base64StreamEncode(reason) => {
                 write!(f, "Could not encode base64 stream: {reason}")

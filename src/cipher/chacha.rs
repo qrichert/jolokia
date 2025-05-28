@@ -8,8 +8,8 @@ use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce};
 
 use super::traits::{self, Cipher, Error};
 
-// TODO: Include name and version in ciphertext, this will, in the
-//  future let us change version and reroute to the corret impl.
+// Contains algorithm name (4-bytes) and version (1-byte).
+const HEADER: &[u8; 5] = b"CH20\x01";
 
 pub struct Chacha20Poly1305;
 
@@ -57,6 +57,10 @@ impl Cipher for Chacha20Poly1305 {
     ) -> traits::Result<()> {
         let key = Key::from_slice(key);
         let cipher = ChaCha20Poly1305::new(key);
+
+        writer
+            .write_all(HEADER)
+            .map_err(|e| Error::Write(e.to_string()))?;
 
         // 7-bytes (56-bits); unique per message.
         //
@@ -126,6 +130,14 @@ impl Cipher for Chacha20Poly1305 {
 
         let key = Key::from_slice(key);
         let cipher = ChaCha20Poly1305::new(key);
+
+        let mut header = [0u8; 5];
+        reader
+            .read_exact(&mut header)
+            .map_err(|e| Error::Read(e.to_string()))?;
+        if &header != HEADER {
+            return Err(Error::Algorithm);
+        }
 
         let mut nonce_prefix = [0u8; 7];
         reader
