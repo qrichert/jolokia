@@ -1,3 +1,35 @@
+//! Chacha20-Poly1305 implementation.
+//!
+//! # Message Format
+//!
+//! All ciphertexts begin with a **5-byte header**:
+//! 1. **Algorithm ID**: 4 ASCII bytes, `b"CH20"`.
+//! 2. **Version**: 1 byte, currently `0x01`.
+//!
+//! After the header comes the **stream framing**:
+//!
+//! ```text
+//! [ header (5) ]
+//! [ 7-byte nonce prefix ]
+//! [ chunk 1 length (4-byte BE) ][ chunk 1 4096-byte ciphertext + 16-byte tag ]
+//! [ chunk 2 length (4-byte BE) ][ chunk 2 4096-byte (or less) ciphertext + 16-byte tag ]
+//!   ⋮
+//! [ 0x00000000 ]  ← zero-length marker = explicit EOF
+//! ```
+//!
+//! - **Nonce prefix** (7 bytes) is generated once per stream;
+//!   it forms the high bits of each AEAD nonce under the `StreamBE32`
+//!   scheme.
+//!
+//! - Each **chunk** encrypts up to 4096 bytes of plaintext, producing
+//!   ciphertext + 16 bytes of Poly1305 tag. The receiver reads exactly
+//!   the advertised length, passes it to the stream decryptor, and
+//!   writes the resulting plaintext.
+//!
+//! - The final zero-length chunk (`0x00 00 00 00`) signals a clean EOF.
+//!   Any other early I/O error or truncated tag will be treated as
+//!   corruption.
+
 use std::io::{Read, Write};
 
 use aead::generic_array::GenericArray;
@@ -14,7 +46,7 @@ const HEADER: &[u8; 5] = b"CH20\x01";
 pub struct Chacha20Poly1305;
 
 impl Cipher for Chacha20Poly1305 {
-    /// Generate a 32-bytes (256-bit) encryption key.
+    /// Generate a 32-byte (256-bit) encryption key.
     fn generate_key() -> Vec<u8> {
         let key = ChaCha20Poly1305::generate_key(&mut OsRng);
         key.to_vec()
@@ -40,7 +72,7 @@ impl Cipher for Chacha20Poly1305 {
         //     "last block" flag stored as the last 5-bytes of the AEAD
         //     nonce.
         //
-        // ChaCha20-Poly1305 uses a 12-bytes nonce, so 12 - 5 = 7 bytes.
+        // ChaCha20-Poly1305 uses a 12-byte nonce, so 12 - 5 = 7 bytes.
         let mut nonce_prefix = [0u8; 7];
         OsRng.fill_bytes(&mut nonce_prefix);
         let nonce_prefix = GenericArray::from_slice(&nonce_prefix);
@@ -78,7 +110,7 @@ impl Cipher for Chacha20Poly1305 {
                 .map_err(|e| Error::Write(e.to_string()))?;
         }
 
-        // Explicit EOF marker (4-bytes of 0).
+        // Explicit EOF marker (4-bytes of 0s).
         // This can be interpreted as "next chunk has 0 length => EOF".
         writer
             .write_all(&0u32.to_be_bytes())
@@ -127,7 +159,7 @@ impl Cipher for Chacha20Poly1305 {
                 // Note that `ErrorKind::UnexpectedEof` _is_ in fact
                 // unexpected. Real EOFs are marked by chunk length 0.
                 .map_err(|e| Error::Read(e.to_string()))?;
-            // Includes 16-bytes suffix for the AEAD auth tag.
+            // Includes 16-byte suffix for the AEAD auth tag.
             let chunk_len = u32::from_be_bytes(chunk_len) as usize;
 
             // Explicit EOF.
