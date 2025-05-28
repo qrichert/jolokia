@@ -10,6 +10,7 @@ pub enum Error {
     Base64StreamDecode(String),
     Read(String),
     Write(String),
+    Platform(String),
 }
 
 impl fmt::Display for Error {
@@ -31,6 +32,7 @@ You are likely using the wrong key, or the encrypted data is broken."
             }
             Self::Read(reason) => write!(f, "Could not read from input: {reason}"),
             Self::Write(reason) => write!(f, "Could not write to output: {reason}"),
+            Self::Platform(reason) => write!(f, "{reason}"),
         }
     }
 }

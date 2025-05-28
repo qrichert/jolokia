@@ -82,16 +82,33 @@ impl traits::Cipher for Chacha20Poly1305 {
             if n == 0 {
                 break;
             }
+            // Encrypt up to 4096 bytes of plaintext, yielding:
+            //     4096-byte ciphertext + 16-byte AEAD auth tag
             let chunk = encryptor
                 .encrypt_next(&buffer[..n])
                 .map_err(|_| traits::Error::Encrypt)?;
 
-            // TODO: Append chunk-length prefix to make it more robust.
+            // 4-bytes (32-bits) big-endian chunk length prefix.
+            // Length-framing enables reading _exact_ chunks during
+            // decryption, and so detect corruption or truncation.
+            let chunk_len = u32::try_from(chunk.len())
+                // `chunk.len()` sould be `4096 + 16 = 4112`.
+                .map_err(|_| traits::Error::Encrypt)?
+                .to_be_bytes();
+            writer
+                .write_all(&chunk_len)
+                .map_err(|e| traits::Error::Write(e.to_string()))?;
 
-            if let Err(reason) = writer.write_all(&chunk) {
-                return Err(traits::Error::Write(reason.to_string()));
-            }
+            writer
+                .write_all(&chunk)
+                .map_err(|e| traits::Error::Write(e.to_string()))?;
         }
+
+        // Explicit EOF marker (4-bytes of 0).
+        // This can be interpreted as "next chunk has 0 length => EOF".
+        writer
+            .write_all(&0u32.to_be_bytes())
+            .map_err(|e| traits::Error::Write(e.to_string()))?;
 
         Ok(())
     }
@@ -101,6 +118,12 @@ impl traits::Cipher for Chacha20Poly1305 {
         reader: &mut R,
         writer: &mut W,
     ) -> traits::Result<()> {
+        if usize::BITS < u32::BITS {
+            return Err(traits::Error::Platform(
+                "< 32-bit platforms are not supported.".to_string(),
+            ));
+        }
+
         let key = Key::from_slice(key);
         let cipher = ChaCha20Poly1305::new(key);
 
@@ -113,21 +136,36 @@ impl traits::Cipher for Chacha20Poly1305 {
         let mut decryptor = DecryptorBE32::from_aead(cipher, nonce_prefix);
 
         // Extra 16-bytes for the AEAD auth tag at the end of each chunk.
-        let mut buffer = vec![0u8; 4096 + 16];
+        let mut chunk_buf: Vec<u8> = Vec::with_capacity(4096 + 16);
         loop {
-            let n = match reader.read(&mut buffer) {
-                Ok(0) => break,
-                Ok(n) => n,
-                Err(reason) => return Err(traits::Error::Read(reason.to_string())),
-            };
+            // 4-byte (32-bits) big-endian chunk length prefix.
+            let mut chunk_len = [0u8; 4];
+            reader
+                .read_exact(&mut chunk_len)
+                // Note that `ErrorKind::UnexpectedEof` _is_ in fact
+                // unexpected. Real EOFs are marked by chunk length 0.
+                .map_err(|e| traits::Error::Read(e.to_string()))?;
+            // Includes 16-bytes suffix for the AEAD auth tag.
+            let chunk_len = u32::from_be_bytes(chunk_len) as usize;
+
+            // Explicit EOF.
+            if chunk_len == 0 {
+                break;
+            }
+
+            // Read the encrypted chunk.
+            chunk_buf.resize(chunk_len, 0);
+            reader
+                .read_exact(&mut chunk_buf)
+                .map_err(|e| traits::Error::Read(e.to_string()))?;
 
             let chunk = decryptor
-                .decrypt_next(&buffer[..n])
+                .decrypt_next(&*chunk_buf)
                 .map_err(|_| traits::Error::Decrypt)?;
 
-            if let Err(reason) = writer.write_all(&chunk) {
-                return Err(traits::Error::Write(reason.to_string()));
-            }
+            writer
+                .write_all(&chunk)
+                .map_err(|e| traits::Error::Write(e.to_string()))?;
         }
 
         Ok(())
@@ -167,12 +205,8 @@ pub mod tests {
             .unwrap();
         let plaintext = b"hello, world!";
 
-        assert!(
-            plaintext.len() < 4096 + 16,
-            "{} >= {}",
-            plaintext.len(),
-            4096 + 16
-        );
+        // Chunks are `4096 + 16 = 4112` bytes (message + auth).
+        assert!(plaintext.len() < 4096, "{} >= 4096", plaintext.len());
 
         let mut encrypted = Vec::new();
         Chacha20Poly1305::encrypt_stream(&key, &mut Cursor::new(plaintext), &mut encrypted)
@@ -195,10 +229,11 @@ pub mod tests {
         let key = "aZZfFANQlAtS5jxyyzHh0R8BWpHGDR2iqsBqROXzPkQ="
             .decode_base64()
             .unwrap();
-        let mut plaintext = b"hello, world!".repeat(316);
-        plaintext.extend(b"abcd");
+        let mut plaintext = b"hello, world!".repeat(315);
+        plaintext.extend(b"1");
 
-        assert_eq!(plaintext.len(), 4096 + 16);
+        // Chunks are `4096 + 16 = 4112` bytes (message + auth).
+        assert_eq!(plaintext.len(), 4096);
 
         let mut encrypted = Vec::new();
         Chacha20Poly1305::encrypt_stream(&key, &mut Cursor::new(plaintext), &mut encrypted)
@@ -213,7 +248,7 @@ pub mod tests {
         let decrypted = String::from_utf8_lossy(&decrypted);
         dbg!(&decrypted);
 
-        assert_eq!(decrypted, "hello, world!".repeat(316) + "abcd");
+        assert_eq!(decrypted, "hello, world!".repeat(315) + "1");
     }
 
     #[test]
@@ -223,12 +258,8 @@ pub mod tests {
             .unwrap();
         let plaintext = b"hello, world!".repeat(320);
 
-        assert!(
-            plaintext.len() > 4096 + 16,
-            "{} <= {}",
-            plaintext.len(),
-            4096 + 16
-        );
+        // Chunks are `4096 + 16 = 4112` bytes (message + auth).
+        assert!(plaintext.len() > 4096, "{} <= 4096", plaintext.len());
 
         let mut encrypted = Vec::new();
         Chacha20Poly1305::encrypt_stream(&key, &mut Cursor::new(plaintext), &mut encrypted)
