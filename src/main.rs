@@ -150,18 +150,18 @@ Key:
   To use the key, pass it as `--key` or `-k`:
 
       {h}${rt} jolokia encrypt \"foo\" --key hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w=
-      FTqHwIHQJ+IsFMiiYkioNmGoD+3zMp4jRpGLQIcNmw==
+      Q0gyMAGSwlWJdALzAAAAE448viN3l+rwa7W4RdkRI0V/VckAAAAA
 
   Or as an environment variable (but `--key` has precedence):
 
       {h}${rt} export {key_env_var}=hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w=
       {h}${rt} jolokia encrypt \"foo\"
-      FTqHwIHQJ+IsFMiiYkioNmGoD+3zMp4jRpGLQIcNmw==
+      Q0gyMAGSwlWJdALzAAAAE448viN3l+rwa7W4RdkRI0V/VckAAAAA
 
   The key can also be the name of a file that contains a key:
 
       {h}${rt} echo hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w= > /secrets/{bin}.key
-      {h}${rt} jolokia decrypt --key /secrets/{bin}.key FTqHwIHQJ+IsFMiiYkioNmGoD+3zMp4jRpGLQIcNmw==
+      {h}${rt} jolokia decrypt --key /secrets/{bin}.key Q0gyMAGSwlWJdALzAAAAE448viN3l+rwa7W4RdkRI0V/VckAAAAA
       foo
 
   To set a key permanently, the recommended solution is to point the
@@ -174,12 +174,12 @@ Message:
   The message can be passed on the command line:
 
       {h}${rt} jolokia encrypt \"bar\"
-      YfCpYYm7tVjxbs1g28K2sKvCMu3mF2/Cl3s4toQd+A==
+      Q0gyMAHPNRsLieAOAAAAE/ssTCh2zCm73t+aQf9aKNepgPkAAAAA
 
   Or via `stdin` (but the command line has precedence):
 
       {h}${rt} cat bar.txt | jolokia encrypt
-      YfCpYYm7tVjxbs1g28K2sKvCMu3mF2/Cl3s4toQd+A==
+      Q0gyMAHPNRsLieAOAAAAE/ssTCh2zCm73t+aQf9aKNepgPkAAAAA
 
   By definition, you can round-trip it:
 

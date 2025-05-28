@@ -15,16 +15,16 @@ $ jolokia genkey
 hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w=
 
 $ jolokia encrypt "hello, world!" --key hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w=
-l/wW9dop4IvF5fR6aRa7WkZKsRnUwG177Q35ej9WMVzhJYr0t8njDi0=
+Q0gyMAGnAk2xt/+cAAAAHYUv/WBO+VxMGHodIL0Qzjbtnv/LPpQd3CCcYW0kAAAAAA==
 
 # Same as passing `--key`.
 $ export JOLOKIA_CIPHER_KEY=hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w=
 
-$ jolokia decrypt l/wW9dop4IvF5fR6aRa7WkZKsRnUwG177Q35ej9WMVzhJYr0t8njDi0=
+$ jolokia decrypt Q0gyMAGnAk2xt/+cAAAAHYUv/WBO+VxMGHodIL0Qzjbtnv/LPpQd3CCcYW0kAAAAAA==
 hello, world!
 
 # The key can be stored inside a file as well.
-$ jolokia decrypt --key /secrets/jolokia.key l/wW9dop4IvF5fR6aRa7WkZKsRnUwG177Q35ej9WMVzhJYr0t8njDi0=
+$ jolokia decrypt --key /secrets/jolokia.key Q0gyMAGnAk2xt/+cAAAAHYUv/WBO+VxMGHodIL0Qzjbtnv/LPpQd3CCcYW0kAAAAAA==
 hello, world!
 ```
 

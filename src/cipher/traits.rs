@@ -1,5 +1,5 @@
 use std::fmt;
-use std::io::{Read, Write};
+use std::io::{self, Read, Write};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Error {
@@ -22,7 +22,7 @@ impl fmt::Display for Error {
                 f,
                 "\
 Could not decrypt input.
-You are likely using the wrong key, or the encrypted data is broken."
+You are likely using the wrong key, or the data is corrupted."
             ),
             Self::Algorithm => write!(f, "Incompatible algorithm."),
             Self::Base64Decode(reason) => write!(f, "Could not decode base64: {reason}"),
@@ -52,7 +52,11 @@ pub trait Cipher {
     ///
     /// Errors if encryption fails. Encryption failures are opaque due
     /// to security concerns.
-    fn encrypt(key: &[u8], plaintext: &[u8]) -> Result<Vec<u8>>;
+    fn encrypt(key: &[u8], plaintext: &[u8]) -> Result<Vec<u8>> {
+        let mut encrypted = Vec::new();
+        Self::encrypt_stream(key, &mut io::Cursor::new(plaintext), &mut encrypted)?;
+        Ok(encrypted)
+    }
 
     /// Decrypt ciphered bytes with key.
     ///
@@ -60,7 +64,11 @@ pub trait Cipher {
     ///
     /// Errors if decryption fails. Decryption failures are opaque due
     /// to security concerns.
-    fn decrypt(key: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>>;
+    fn decrypt(key: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>> {
+        let mut decrypted = Vec::new();
+        Self::decrypt_stream(key, &mut io::Cursor::new(ciphertext), &mut decrypted)?;
+        Ok(decrypted)
+    }
 
     /// Encrypt stream of plain bytes with key.
     ///

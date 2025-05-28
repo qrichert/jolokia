@@ -3,8 +3,8 @@ use std::io::{Read, Write};
 use aead::generic_array::GenericArray;
 use aead::rand_core::{OsRng, RngCore};
 use aead::stream::{DecryptorBE32, EncryptorBE32};
-use chacha20poly1305::aead::{Aead, AeadCore, KeyInit};
-use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce};
+use chacha20poly1305::aead::KeyInit;
+use chacha20poly1305::{ChaCha20Poly1305, Key};
 
 use super::traits::{self, Cipher, Error};
 
@@ -18,36 +18,6 @@ impl Cipher for Chacha20Poly1305 {
     fn generate_key() -> Vec<u8> {
         let key = ChaCha20Poly1305::generate_key(&mut OsRng);
         key.to_vec()
-    }
-
-    fn encrypt(key: &[u8], plaintext: &[u8]) -> traits::Result<Vec<u8>> {
-        let key = Key::from_slice(key);
-        let cipher = ChaCha20Poly1305::new(key);
-        // 12-bytes (96-bits); unique per message.
-        let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng);
-
-        let Ok(ciphertext) = cipher.encrypt(&nonce, plaintext) else {
-            return Err(Error::Encrypt);
-        };
-
-        // Prepend cipher text with nonce for retrieval during decryption.
-        let mut output = nonce.to_vec();
-        output.extend(ciphertext);
-
-        Ok(output)
-    }
-
-    fn decrypt(key: &[u8], ciphertext: &[u8]) -> traits::Result<Vec<u8>> {
-        let key = Key::from_slice(key);
-        let cipher = ChaCha20Poly1305::new(key);
-
-        let (nonce, ciphertext) = ciphertext.split_at(12);
-        let nonce = Nonce::from_slice(nonce);
-
-        let Ok(plaintext) = cipher.decrypt(nonce, ciphertext) else {
-            return Err(Error::Decrypt);
-        };
-        Ok(plaintext)
     }
 
     fn encrypt_stream<R: Read, W: Write>(
