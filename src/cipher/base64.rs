@@ -4,29 +4,29 @@ use base64::prelude::{BASE64_STANDARD, Engine as _};
 use base64::{read::DecoderReader, write::EncoderWriter};
 
 use super::traits::{
-    self, DecodeBase64, DecodeBase64Stream, EncodeBase64, EncodeBase64Stream, Error,
+    self, Base64Decode, Base64DecodeStream, Base64Encode, Base64EncodeStream, Error,
 };
 
-impl EncodeBase64 for &[u8] {
-    fn encode_base64(&self) -> String {
+impl Base64Encode for &[u8] {
+    fn base64_encode(&self) -> String {
         BASE64_STANDARD.encode(self)
     }
 }
 
-impl<const N: usize> EncodeBase64 for &[u8; N] {
-    fn encode_base64(&self) -> String {
-        self.as_slice().encode_base64()
+impl<const N: usize> Base64Encode for &[u8; N] {
+    fn base64_encode(&self) -> String {
+        self.as_slice().base64_encode()
     }
 }
 
-impl EncodeBase64 for Vec<u8> {
-    fn encode_base64(&self) -> String {
-        self.as_slice().encode_base64()
+impl Base64Encode for Vec<u8> {
+    fn base64_encode(&self) -> String {
+        self.as_slice().base64_encode()
     }
 }
 
-impl DecodeBase64 for &str {
-    fn decode_base64(&self) -> traits::Result<Vec<u8>> {
+impl Base64Decode for &str {
+    fn base64_decode(&self) -> traits::Result<Vec<u8>> {
         match BASE64_STANDARD.decode(self) {
             Ok(bytes) => Ok(bytes),
             Err(reason) => Err(Error::Base64Decode(reason.to_string())),
@@ -34,14 +34,14 @@ impl DecodeBase64 for &str {
     }
 }
 
-impl DecodeBase64 for String {
-    fn decode_base64(&self) -> traits::Result<Vec<u8>> {
-        self.as_str().decode_base64()
+impl Base64Decode for String {
+    fn base64_decode(&self) -> traits::Result<Vec<u8>> {
+        self.as_str().base64_decode()
     }
 }
 
-impl<R: Read> EncodeBase64Stream for R {
-    fn encode_base64_stream<W: Write>(&mut self, writer: &mut W) -> traits::Result<()> {
+impl<R: Read> Base64EncodeStream for R {
+    fn base64_encode_stream<W: Write>(&mut self, writer: &mut W) -> traits::Result<()> {
         let mut encoder = EncoderWriter::new(writer, &BASE64_STANDARD);
 
         std::io::copy(self, &mut encoder)
@@ -56,8 +56,8 @@ impl<R: Read> EncodeBase64Stream for R {
     }
 }
 
-impl<R: Read> DecodeBase64Stream for R {
-    fn decode_base64_stream<W: Write>(&mut self, writer: &mut W) -> traits::Result<()> {
+impl<R: Read> Base64DecodeStream for R {
+    fn base64_decode_stream<W: Write>(&mut self, writer: &mut W) -> traits::Result<()> {
         let mut decoder = DecoderReader::new(self, &BASE64_STANDARD);
 
         std::io::copy(&mut decoder, writer)
@@ -79,7 +79,7 @@ pub mod tests {
     fn base64_encode_bytes() {
         let plaintext = b"hello, world!";
 
-        let base64 = plaintext.encode_base64();
+        let base64 = plaintext.base64_encode();
 
         assert_eq!(base64, "aGVsbG8sIHdvcmxkIQ==");
     }
@@ -88,7 +88,7 @@ pub mod tests {
     fn base64_decode_string() {
         let base64 = "aGVsbG8sIHdvcmxkIQ==";
 
-        let plaintext = base64.decode_base64().unwrap();
+        let plaintext = base64.base64_decode().unwrap();
         let plaintext = String::from_utf8_lossy(&plaintext).to_string();
 
         assert_eq!(plaintext, "hello, world!");
@@ -100,7 +100,7 @@ pub mod tests {
 
         let mut buf = Vec::new();
         Cursor::new(plaintext)
-            .encode_base64_stream(&mut buf)
+            .base64_encode_stream(&mut buf)
             .unwrap();
 
         let base64 = String::from_utf8_lossy(&buf);
@@ -114,7 +114,7 @@ pub mod tests {
 
         let mut buf = Vec::new();
         Cursor::new(plaintext)
-            .encode_base64_stream(&mut buf)
+            .base64_encode_stream(&mut buf)
             .unwrap();
 
         let base64 = String::from_utf8_lossy(&buf);
@@ -127,7 +127,7 @@ pub mod tests {
         let base64 = "aGVsbG8sIHdvcmxkIQ==";
 
         let mut buf = Vec::new();
-        Cursor::new(base64).decode_base64_stream(&mut buf).unwrap();
+        Cursor::new(base64).base64_decode_stream(&mut buf).unwrap();
 
         let plaintext = String::from_utf8_lossy(&buf);
 
@@ -139,7 +139,7 @@ pub mod tests {
         let base64 = HELLO_WORLD_1000;
 
         let mut buf = Vec::new();
-        Cursor::new(base64).decode_base64_stream(&mut buf).unwrap();
+        Cursor::new(base64).base64_decode_stream(&mut buf).unwrap();
 
         let plaintext = String::from_utf8_lossy(&buf);
 

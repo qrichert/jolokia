@@ -87,36 +87,36 @@ pub trait Cipher {
     fn decrypt_stream<R: Read, W: Write>(key: &[u8], reader: &mut R, writer: &mut W) -> Result<()>;
 }
 
-pub trait EncodeBase64 {
+pub trait Base64Encode {
     /// Encode `self` in base64 string.
     #[must_use]
-    fn encode_base64(&self) -> String;
+    fn base64_encode(&self) -> String;
 }
 
-pub trait DecodeBase64 {
+pub trait Base64Decode {
     /// Decode base64-encoded `self` to bytes.
     ///
     /// # Errors
     ///
     /// Errors if `self` does not contain valid base64.
-    fn decode_base64(&self) -> Result<Vec<u8>>;
+    fn base64_decode(&self) -> Result<Vec<u8>>;
 }
 
-pub trait EncodeBase64Stream {
+pub trait Base64EncodeStream {
     /// Encode `self` in base64 and stream as string to writer.
     ///
     /// # Errors
     ///
     /// Errors if writing fails.
-    fn encode_base64_stream<W: Write>(&mut self, writer: &mut W) -> Result<()>;
+    fn base64_encode_stream<W: Write>(&mut self, writer: &mut W) -> Result<()>;
 }
 
-pub trait DecodeBase64Stream {
+pub trait Base64DecodeStream {
     /// Decode `self` in base64 and stream as bytes to writer.
     ///
     /// # Errors
     ///
     /// Errors if `self` does not contain valid base64, or if writing
     /// fails.
-    fn decode_base64_stream<W: Write>(&mut self, writer: &mut W) -> Result<()>;
+    fn base64_decode_stream<W: Write>(&mut self, writer: &mut W) -> Result<()>;
 }

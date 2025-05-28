@@ -191,7 +191,7 @@ pub mod tests {
     use std::io::Cursor;
 
     use super::*;
-    use crate::{Cipher, DecodeBase64};
+    use crate::{Base64Decode, Cipher};
 
     // Note: We can't really test encryption alone, because the result
     // is not deteministic (the nonce prevents identical plaintexts from
@@ -200,7 +200,7 @@ pub mod tests {
     #[test]
     fn chacha_encrypt_decrypt_roundtrip() {
         let key = "aZZfFANQlAtS5jxyyzHh0R8BWpHGDR2iqsBqROXzPkQ="
-            .decode_base64()
+            .base64_decode()
             .unwrap();
         let plaintext = b"hello, world!";
 
@@ -215,7 +215,7 @@ pub mod tests {
     #[test]
     fn chacha_encrypt_decrypt_streaming_roundtrip_shorter_than_a_chunk() {
         let key = "aZZfFANQlAtS5jxyyzHh0R8BWpHGDR2iqsBqROXzPkQ="
-            .decode_base64()
+            .base64_decode()
             .unwrap();
         let plaintext = b"hello, world!";
 
@@ -241,7 +241,7 @@ pub mod tests {
     #[test]
     fn chacha_encrypt_decrypt_streaming_roundtrip_same_length_as_a_chunk() {
         let key = "aZZfFANQlAtS5jxyyzHh0R8BWpHGDR2iqsBqROXzPkQ="
-            .decode_base64()
+            .base64_decode()
             .unwrap();
         let mut plaintext = b"hello, world!".repeat(315);
         plaintext.extend(b"1");
@@ -268,7 +268,7 @@ pub mod tests {
     #[test]
     fn chacha_encrypt_decrypt_streaming_roundtrip_longer_than_a_chunk() {
         let key = "aZZfFANQlAtS5jxyyzHh0R8BWpHGDR2iqsBqROXzPkQ="
-            .decode_base64()
+            .base64_decode()
             .unwrap();
         let plaintext = b"hello, world!".repeat(320);
 
