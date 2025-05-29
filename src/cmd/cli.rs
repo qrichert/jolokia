@@ -1,5 +1,5 @@
 use std::fs;
-use std::io::{self, IsTerminal, Read};
+use std::io::{self, IsTerminal};
 use std::path::PathBuf;
 
 pub const KEY_ENV_VAR: &str = "JOLOKIA_CIPHER_KEY";
@@ -11,12 +11,28 @@ pub enum Command {
     Decrypt,
 }
 
+#[derive(Debug, Eq, PartialEq)]
+pub enum Message {
+    String(String),
+    File(PathBuf),
+    Stdin,
+}
+
+#[derive(Debug, Default, Eq, PartialEq)]
+pub enum Output {
+    File(PathBuf),
+    #[default]
+    Stdout,
+    Redirected,
+}
+
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct Args {
     pub command: Option<Command>,
     pub key: Option<String>,
-    pub message: Option<String>,
+    pub message: Option<Message>,
+    pub output: Output,
     pub short_help: bool,
     pub long_help: bool,
     pub version: bool,
@@ -32,6 +48,7 @@ impl Args {
         while let Some(arg) = cli_args.next() {
             let some_command = args.command.is_some();
             let some_key = args.key.is_some();
+            let some_output = matches!(args.output, Output::File(_));
             let some_message = args.message.is_some();
 
             match arg.as_ref() {
@@ -42,8 +59,20 @@ impl Args {
                 "-h" => args.short_help = true,
                 "--help" => args.long_help = true,
                 "-V" | "--version" => args.version = true,
+                "-o" | "--output" => {
+                    if some_command && !some_output {
+                        if let Some(file) = cli_args.next() {
+                            args.output = Output::File(PathBuf::from(file.as_ref()));
+                        }
+                    }
+                }
+                "-f" | "--file" if some_command && !some_message => {
+                    args.message = cli_args
+                        .next()
+                        .map(|m| Message::File(PathBuf::from(m.as_ref())));
+                }
                 message if some_command && !some_message => {
-                    args.message = Some(message.to_string());
+                    args.message = Some(Message::String(message.to_string()));
                 }
                 unknown => {
                     return Err(format!("Unknown argument: '{unknown}'"));
@@ -64,8 +93,13 @@ impl Args {
         }
 
         // If not message, try `stdin`.
-        if args.message.is_none() {
-            args.message = Self::maybe_get_message_from_stdin();
+        if args.message.is_none() && Self::does_stdin_have_content() {
+            args.message = Some(Message::Stdin);
+        }
+
+        // If no explicit `--output`, check if redirected or `stdout`.
+        if !matches!(args.output, Output::File(_)) && Self::is_output_redirected() {
+            args.output = Output::Redirected;
         }
 
         Ok(args)
@@ -93,25 +127,16 @@ impl Args {
         None
     }
 
-    fn maybe_get_message_from_stdin() -> Option<String> {
+    fn does_stdin_have_content() -> bool {
         // If the descriptor/handle refers to a terminal/tty, there is
-        // nothing in stdin to be consumed. This check is needed or else
-        // `read_to_string()` hangs waiting for EOF if `stdin` is empty.
-        if io::stdin().is_terminal() {
-            return None;
-        }
+        // nothing in stdin to be consumed.
+        !io::stdin().is_terminal()
+    }
 
-        let mut buffer = String::new();
-        io::stdin().read_to_string(&mut buffer).ok()?;
-        // Sometimes trailing newlines get added (not base64 so
-        // we can safely trim them).
-
-        let message = buffer.trim_end();
-        if !message.is_empty() {
-            return Some(message.to_string());
-        }
-
-        None
+    fn is_output_redirected() -> bool {
+        // If the descriptor/handle refers to a terminal/tty, the output
+        // is not redirected to a file.
+        !io::stdout().is_terminal()
     }
 }
 

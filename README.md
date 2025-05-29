@@ -34,14 +34,19 @@ hello, world!
 - [x] `encrypt`/`decrypt`
   - [x] From CLI argument.
   - [x] From `stdin`.
-  - [ ] From file (show example with `tar`).
+  - [x] From file (show example with `tar`).
   - [ ] From directory (`-R`, `--recursive`).
-- [ ] `--help`
-- [ ] `--raw` (for non-text files).
-- [x] Streaming encryption (will likely break existing messages!).
+- [ ] Complete `--help`.
+- [ ] `--raw` (for non-text files). Or should it be `--plain`?
+- [x] Streaming cipher (everything is ready for it, CLI and algos, the
+      two are just not yet connected).
 - [ ] Choose `--algorithm` (`JOLOKIA_ALGORITHM`).
   - [x] Chacha20-Poly1305
   - [ ] ROT13 (useless, but forces generic design).
+- [ ] If multiple algorithms, should we keep `JOLOKIA_CIPHER_KEY` as
+      default also support specialized:
+      `JOLOKIA_CIPHER_KEY_CHACHA20POLY1305`?). If so, rename
+      `JOLOKIA_CIPHER_KEY` to just `JOLOKIA_KEY`.
 
 ## Installation
 

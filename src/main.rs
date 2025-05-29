@@ -1,7 +1,8 @@
 mod cmd;
 
-use std::env;
+use std::io::{self, Read, Write};
 use std::process;
+use std::{env, fs};
 
 use lessify::Pager;
 
@@ -29,12 +30,14 @@ fn main() {
             cli::Command::Encrypt => {
                 let key = get_key_or_default(&args, true);
                 let message = get_message_or_exit(&args);
-                cmd::encrypt(key, message)
+                let output = get_output_or_exit(&args);
+                cmd::encrypt(key, message, output)
             }
             cli::Command::Decrypt => {
                 let key = get_key_or_default(&args, false);
                 let message = get_message_or_exit(&args);
-                cmd::decrypt(key, message)
+                let output = get_output_or_exit(&args);
+                cmd::decrypt(key, message, output)
             }
         } {
             eprintln!(
@@ -78,15 +81,54 @@ with `--key`, or set the `{key_env_var}` environment variable.
     }
 }
 
-fn get_message_or_exit(args: &cli::Args) -> &str {
+fn get_message_or_exit(args: &cli::Args) -> Box<dyn Read> {
     if let Some(ref message) = args.message {
-        message.as_str()
+        match message {
+            cli::Message::String(message) => Box::new(io::Cursor::new(message.to_owned())),
+            cli::Message::File(file) => {
+                let f = match fs::File::open(file) {
+                    Ok(f) => f,
+                    Err(reason) => {
+                        eprintln!(
+                            "{error}: Could not read '{}': {reason}.",
+                            file.display(),
+                            error = ui::Color::error("error")
+                        );
+                        process::exit(1);
+                    }
+                };
+                let reader = io::BufReader::new(f);
+                Box::new(reader)
+            }
+            cli::Message::Stdin => Box::new(io::stdin()),
+        }
     } else {
         eprintln!(
             "{fatal}: You must provide a message.",
             fatal = ui::Color::error("fatal")
         );
         process::exit(2);
+    }
+}
+
+fn get_output_or_exit(args: &cli::Args) -> Box<dyn Write> {
+    match args.output {
+        cli::Output::File(ref file) => {
+            let f = match fs::File::create(file) {
+                Ok(f) => f,
+                Err(reason) => {
+                    eprintln!(
+                        "{error}: Could not open file for writing '{}': {reason}.",
+                        file.display(),
+                        error = ui::Color::error("error")
+                    );
+                    process::exit(1);
+                }
+            };
+            let writer = io::BufWriter::new(f);
+            Box::new(writer)
+        }
+        cli::Output::Stdout | cli::Output::Redirected => Box::new(io::stdout()),
     }
 }
 
@@ -107,12 +149,14 @@ Usage: {bin} [<options>] <command> [<args>]
 
 Commands:
   genkey                 Generate cipher key
-  encrypt
-  decrypt
+  encrypt                Encrypt plaintext
+  decrypt                Decrypt ciphertext
 
 Args:
   <MESSAGE>
   -k, --key <KEY>        Cipher key (base64)
+  -f, --file <FILE>      Read message from file
+  -o, --output <FILE>    Write output to file
 
 Options:
   -h, --help             Show this message and exit
@@ -176,6 +220,11 @@ Message:
       {h}${rt} jolokia encrypt \"bar\"
       Q0gyMAHPNRsLieAOAAAAE/ssTCh2zCm73t+aQf9aKNepgPkAAAAA
 
+  Or from a file:
+
+      {h}${rt} jolokia encrypt --file bar.txt
+      Q0gyMAHPNRsLieAOAAAAE/ssTCh2zCm73t+aQf9aKNepgPkAAAAA
+
   Or via `stdin` (but the command line has precedence):
 
       {h}${rt} cat bar.txt | jolokia encrypt
@@ -183,8 +232,8 @@ Message:
 
   By definition, you can round-trip it:
 
-      {h}${rt} jolokia encrypt \"hello, world\" > encrypted.txt
-      {h}${rt} cat encrypted.txt | jolokia decrypt
+      {h}${rt} jolokia encrypt \"hello, world\" -o encrypted.txt
+      {h}${rt} jolokia decrypt -f encrypted.txt
       hello, world
 ",
         help = short_help_message(),
