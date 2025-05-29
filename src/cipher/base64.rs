@@ -1,11 +1,18 @@
-use std::io::{Read, Write};
+use std::io::{self, Read, Write};
 
-use base64::prelude::{BASE64_STANDARD, Engine as _};
+use base64::engine::{self, Engine as _};
+use base64::prelude::BASE64_STANDARD;
 use base64::{read::DecoderReader, write::EncoderWriter};
 
 use super::traits::{
     self, Base64Decode, Base64DecodeStream, Base64Encode, Base64EncodeStream, Error,
 };
+
+// TODO: Implement dedicated `encode_key()`/`decode_key()` methods.
+//  As per the `GeneralPurpose` engine docs:
+//      It is not constant-time, though, so it is vulnerable to timing
+//      side-channel attacks. For loading cryptographic keys, etc, it is
+//      suggested to use the forthcoming constant-time implementation.
 
 impl Base64Encode for &[u8] {
     fn base64_encode(&self) -> String {
@@ -64,6 +71,44 @@ impl<R: Read> Base64DecodeStream for R {
             .map_err(|reason| Error::Base64StreamDecode(reason.to_string()))?;
 
         Ok(())
+    }
+}
+
+pub struct Base64Sink<'a, W: Write> {
+    encoder: EncoderWriter<'a, engine::GeneralPurpose, &'a mut W>,
+}
+
+impl<'a, W: Write> Base64Sink<'a, W> {
+    pub fn new(writer: &'a mut W) -> Self {
+        let encoder = EncoderWriter::new(writer, &BASE64_STANDARD);
+        Self { encoder }
+    }
+}
+
+impl<W: Write> Write for Base64Sink<'_, W> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.encoder.write(buf)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.encoder.flush()
+    }
+}
+
+pub struct Base64Source<'a, R: Read> {
+    decoder: DecoderReader<'a, engine::GeneralPurpose, &'a mut R>,
+}
+
+impl<'a, R: Read> Base64Source<'a, R> {
+    pub fn new(reader: &'a mut R) -> Self {
+        let decoder = DecoderReader::new(reader, &BASE64_STANDARD);
+        Self { decoder }
+    }
+}
+
+impl<R: Read> Read for Base64Source<'_, R> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.decoder.read(buf)
     }
 }
 

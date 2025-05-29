@@ -47,6 +47,7 @@ hello, world!
       default also support specialized:
       `JOLOKIA_CIPHER_KEY_CHACHA20POLY1305`?). If so, rename
       `JOLOKIA_CIPHER_KEY` to just `JOLOKIA_KEY`.
+- [ ] Zeroize secrets.
 
 ## Installation
 
