@@ -50,14 +50,14 @@ fn execute_command(command: &cli::Command, args: &cli::Args) -> Result<(), Strin
         cli::Command::GenKey => cmd::genkey(),
         cli::Command::Encrypt => {
             ensure_input_neq_output_or_exit(args);
-            let key = get_key_or_default(args, true);
+            let key = get_key_or_default(args);
             let message = get_message_or_exit(args);
             let output = get_output_or_exit(args);
             cmd::encrypt(key, message, output)
         }
         cli::Command::Decrypt => {
             ensure_input_neq_output_or_exit(args);
-            let key = get_key_or_default(args, false);
+            let key = get_key_or_default(args);
             let message = get_message_or_exit(args);
             let output = get_output_or_exit(args);
             cmd::decrypt(key, message, output)
@@ -89,13 +89,12 @@ Please write to a separate file, and rename it afterwards.",
     }
 }
 
-fn get_key_or_default(args: &cli::Args, warn_if_default: bool) -> &str {
+fn get_key_or_default(args: &cli::Args) -> &str {
     if let Some(ref key) = args.key {
         key.as_str()
     } else {
-        if warn_if_default {
-            eprintln!(
-                "\
+        eprintln!(
+            "\
 {warning}: Using {package}'s default cipher key.
 
                        {b}THIS IS NOT SECURE!{rt}
@@ -104,14 +103,13 @@ Anyone using {package} will be able to decrypt your messages. To generate
 a unique cipher key, run `{bin} genkey`, and use it on the command line
 with `--key`, or set the `{key_env_var}` environment variable.
 ",
-                warning = ui::Color::warning("warning"),
-                package = env!("CARGO_PKG_NAME"),
-                bin = env!("CARGO_BIN_NAME"),
-                key_env_var = cli::KEY_ENV_VAR,
-                b = ui::Color::maybe_color(ui::color::BOLD),
-                rt = ui::Color::maybe_color(ui::color::RESET),
-            );
-        }
+            warning = ui::Color::warning("warning"),
+            package = env!("CARGO_PKG_NAME"),
+            bin = env!("CARGO_BIN_NAME"),
+            key_env_var = cli::KEY_ENV_VAR,
+            b = ui::Color::maybe_color(ui::color::BOLD),
+            rt = ui::Color::maybe_color(ui::color::RESET),
+        );
         cmd::DEFAULT_KEY
     }
 }
