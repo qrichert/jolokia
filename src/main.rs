@@ -12,8 +12,13 @@ fn main() {
     let args = match cli::Args::build_from_args(env::args().skip(1)) {
         Ok(args) => args,
         Err(err) => {
-            eprintln!("{fatal}: {err}.", fatal = ui::Color::error("fatal"));
-            println!("Try '{bin} -h' for help.", bin = env!("CARGO_BIN_NAME"));
+            eprintln!(
+                "\
+{fatal}: {err}.
+Try '{bin} -h' for help.",
+                fatal = ui::Color::error("fatal"),
+                bin = env!("CARGO_BIN_NAME")
+            );
             process::exit(2);
         }
     };
@@ -25,21 +30,7 @@ fn main() {
     } else if args.version {
         version();
     } else if let Some(ref command) = args.command {
-        if let Err(reason) = match command {
-            cli::Command::GenKey => cmd::genkey(),
-            cli::Command::Encrypt => {
-                let key = get_key_or_default(&args, true);
-                let message = get_message_or_exit(&args);
-                let output = get_output_or_exit(&args);
-                cmd::encrypt(key, message, output)
-            }
-            cli::Command::Decrypt => {
-                let key = get_key_or_default(&args, false);
-                let message = get_message_or_exit(&args);
-                let output = get_output_or_exit(&args);
-                cmd::decrypt(key, message, output)
-            }
-        } {
+        if let Err(reason) = execute_command(command, &args) {
             eprintln!(
                 "{error}: {reason}{}",
                 // Errors from dependencies may or may not end with `.`.
@@ -51,6 +42,50 @@ fn main() {
     } else {
         // No arguments.
         short_help();
+    }
+}
+
+fn execute_command(command: &cli::Command, args: &cli::Args) -> Result<(), String> {
+    match command {
+        cli::Command::GenKey => cmd::genkey(),
+        cli::Command::Encrypt => {
+            ensure_input_neq_output_or_exit(args);
+            let key = get_key_or_default(args, true);
+            let message = get_message_or_exit(args);
+            let output = get_output_or_exit(args);
+            cmd::encrypt(key, message, output)
+        }
+        cli::Command::Decrypt => {
+            ensure_input_neq_output_or_exit(args);
+            let key = get_key_or_default(args, false);
+            let message = get_message_or_exit(args);
+            let output = get_output_or_exit(args);
+            cmd::decrypt(key, message, output)
+        }
+    }
+}
+
+fn ensure_input_neq_output_or_exit(args: &cli::Args) {
+    if let (Some(cli::Message::File(input_file)), cli::Output::File(output_file)) =
+        (&args.message, &args.output)
+    {
+        let Ok(input_file) = input_file.canonicalize() else {
+            return;
+        };
+        let Ok(output_file) = output_file.canonicalize() else {
+            return;
+        };
+
+        if input_file == output_file {
+            eprintln!(
+                "\
+{fatal}: Cannot read/write from/to the same file.
+Writing to a file truncates it; there's nothing left to read then.
+Please write to a separate file, and rename it afterwards.",
+                fatal = ui::Color::error("fatal"),
+            );
+            process::exit(2);
+        }
     }
 }
 
