@@ -222,29 +222,29 @@ Key:
   To generate a new key run:
 
       {h}${rt} jolokia genkey
-      hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w=
+      hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w
 
   To use the key, pass it as `--key` or `-k`:
 
-      {h}${rt} jolokia encrypt \"foo\" --key hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w=
+      {h}${rt} jolokia encrypt \"foo\" --key hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w
       Q0gyMAGSwlWJdALzAAAAE448viN3l+rwa7W4RdkRI0V/VckAAAAA
 
   Or as an environment variable (but `--key` has precedence):
 
-      {h}${rt} export {key_env_var}=hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w=
+      {h}${rt} export {key_env_var}=hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w
       {h}${rt} jolokia encrypt \"foo\"
       Q0gyMAGSwlWJdALzAAAAE448viN3l+rwa7W4RdkRI0V/VckAAAAA
 
   The key can also be the name of a file that contains a key:
 
-      {h}${rt} echo hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w= > /secrets/{bin}.key
+      {h}${rt} echo hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w > /secrets/{bin}.key
       {h}${rt} jolokia decrypt --key /secrets/{bin}.key Q0gyMAGSwlWJdALzAAAAE448viN3l+rwa7W4RdkRI0V/VckAAAAA
       foo
 
   To set a key permanently, the recommended solution is to point the
   environment variable to a file:
 
-      {h}${rt} echo hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w= > ~/.{bin}.key
+      {h}${rt} echo hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w > ~/.{bin}.key
       {h}${rt} echo '{key_env_var}=\"$HOME/.{bin}.key\"' >> ~/.bashrc
 
 Message:

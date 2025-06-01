@@ -6,7 +6,7 @@ use std::io::{Read, Write};
 use jolokia::{Base64Decode, Base64Encode, Base64Sink, Base64Source, Chacha20Poly1305, Cipher};
 
 /// Generic cipher key used by jolokia (this is _not secure_!).
-pub const DEFAULT_KEY: &str = "edLKPT4jYaabmMwuKzgQwklMC9HxTYmhVY7qln4yrJM=";
+pub const DEFAULT_KEY: &str = "edLKPT4jYaabmMwuKzgQwklMC9HxTYmhVY7qln4yrJM";
 
 #[allow(clippy::unnecessary_wraps)] // Keep return type consistent.
 pub fn genkey() -> Result<(), String> {

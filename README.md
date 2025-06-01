@@ -12,19 +12,19 @@ _Strong encryption, made simple._
 
 ```console
 $ jolokia genkey
-hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w=
+hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w
 
-$ jolokia encrypt "hello, world!" --key hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w=
-Q0gyMAGnAk2xt/+cAAAAHYUv/WBO+VxMGHodIL0Qzjbtnv/LPpQd3CCcYW0kAAAAAA==
+$ jolokia encrypt "hello, world!" --key hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w
+Q0gyMAGnAk2xt/+cAAAAHYUv/WBO+VxMGHodIL0Qzjbtnv/LPpQd3CCcYW0kAAAAAA
 
 # Same as passing `--key`.
-$ export JOLOKIA_CIPHER_KEY=hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w=
+$ export JOLOKIA_CIPHER_KEY=hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w
 
-$ jolokia decrypt Q0gyMAGnAk2xt/+cAAAAHYUv/WBO+VxMGHodIL0Qzjbtnv/LPpQd3CCcYW0kAAAAAA==
+$ jolokia decrypt Q0gyMAGnAk2xt/+cAAAAHYUv/WBO+VxMGHodIL0Qzjbtnv/LPpQd3CCcYW0kAAAAAA
 hello, world!
 
 # The key can be stored inside a file as well.
-$ jolokia decrypt --key /secrets/jolokia.key Q0gyMAGnAk2xt/+cAAAAHYUv/WBO+VxMGHodIL0Qzjbtnv/LPpQd3CCcYW0kAAAAAA==
+$ jolokia decrypt --key /secrets/jolokia.key Q0gyMAGnAk2xt/+cAAAAHYUv/WBO+VxMGHodIL0Qzjbtnv/LPpQd3CCcYW0kAAAAAA
 hello, world!
 ```
 

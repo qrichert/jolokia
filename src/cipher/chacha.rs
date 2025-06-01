@@ -199,7 +199,7 @@ pub mod tests {
 
     #[test]
     fn chacha_encrypt_decrypt_roundtrip() {
-        let key = "aZZfFANQlAtS5jxyyzHh0R8BWpHGDR2iqsBqROXzPkQ="
+        let key = "aZZfFANQlAtS5jxyyzHh0R8BWpHGDR2iqsBqROXzPkQ"
             .base64_decode()
             .unwrap();
         let plaintext = b"hello, world!";
@@ -214,7 +214,7 @@ pub mod tests {
 
     #[test]
     fn chacha_encrypt_decrypt_streaming_roundtrip_shorter_than_a_chunk() {
-        let key = "aZZfFANQlAtS5jxyyzHh0R8BWpHGDR2iqsBqROXzPkQ="
+        let key = "aZZfFANQlAtS5jxyyzHh0R8BWpHGDR2iqsBqROXzPkQ"
             .base64_decode()
             .unwrap();
         let plaintext = b"hello, world!";
@@ -240,7 +240,7 @@ pub mod tests {
 
     #[test]
     fn chacha_encrypt_decrypt_streaming_roundtrip_same_length_as_a_chunk() {
-        let key = "aZZfFANQlAtS5jxyyzHh0R8BWpHGDR2iqsBqROXzPkQ="
+        let key = "aZZfFANQlAtS5jxyyzHh0R8BWpHGDR2iqsBqROXzPkQ"
             .base64_decode()
             .unwrap();
         let mut plaintext = b"hello, world!".repeat(315);
@@ -267,7 +267,7 @@ pub mod tests {
 
     #[test]
     fn chacha_encrypt_decrypt_streaming_roundtrip_longer_than_a_chunk() {
-        let key = "aZZfFANQlAtS5jxyyzHh0R8BWpHGDR2iqsBqROXzPkQ="
+        let key = "aZZfFANQlAtS5jxyyzHh0R8BWpHGDR2iqsBqROXzPkQ"
             .base64_decode()
             .unwrap();
         let plaintext = b"hello, world!".repeat(320);
