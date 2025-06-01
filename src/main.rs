@@ -46,19 +46,15 @@ Try '{bin} -h' for help.",
 }
 
 fn execute_command(command: &cli::Command, args: &cli::Args) -> Result<(), String> {
+    let add_newline = !matches!(args.output, cli::Output::Redirected);
     match command {
-        cli::Command::GenKey => cmd::genkey(),
+        cli::Command::GenKey => cmd::genkey(add_newline),
         cli::Command::Encrypt => {
             ensure_input_neq_output_or_exit(args);
             let key = get_key_or_default(args);
             let message = get_message_or_exit(args);
             let output = get_output_or_exit(args);
-            cmd::encrypt(
-                key,
-                message,
-                output,
-                !matches!(args.output, cli::Output::Redirected),
-            )
+            cmd::encrypt(key, message, output, add_newline)
         }
         cli::Command::Decrypt => {
             ensure_input_neq_output_or_exit(args);

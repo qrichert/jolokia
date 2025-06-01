@@ -9,9 +9,12 @@ use jolokia::{Base64Decode, Base64Encode, Base64Sink, Base64Source, Chacha20Poly
 pub const DEFAULT_KEY: &str = "edLKPT4jYaabmMwuKzgQwklMC9HxTYmhVY7qln4yrJM";
 
 #[allow(clippy::unnecessary_wraps)] // Keep return type consistent.
-pub fn genkey() -> Result<(), String> {
+pub fn genkey(add_newline: bool) -> Result<(), String> {
     let key = Chacha20Poly1305::generate_key().base64_encode();
-    println!("{key}");
+    print!("{key}");
+    if add_newline {
+        println!();
+    }
     Ok(())
 }
 
