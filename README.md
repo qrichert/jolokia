@@ -37,7 +37,7 @@ hello, world!
   - [x] From file (show example with `tar`).
   - [ ] From directory (`-R`, `--recursive`).
 - [ ] Complete `--help`.
-- [ ] `--raw` (for non-text files). Or should it be `--plain`?
+- [ ] `-r`/`--raw` (if you don't want base64 output/input).
 - [x] Streaming cipher (everything is ready for it, CLI and algos, the
       two are just not yet connected).
 - [ ] Choose `--algorithm` (`JOLOKIA_ALGORITHM`).
@@ -48,11 +48,11 @@ hello, world!
       `JOLOKIA_CIPHER_KEY_CHACHA20POLY1305`?). If so, rename
       `JOLOKIA_CIPHER_KEY` to just `JOLOKIA_KEY`.
 - [ ] Zeroize secrets.
-- [ ] Compression (Compress → Encrypt → Base64). Encryption produces a
-      high entropy output that is unsuited for compression. So
-      compression must come first in the pipeline. Use
-      [`flate2`](https://docs.rs/flate2/latest/flate2/) with
-      `rust_backend`.
+- [ ] `-c`/`--compress` and `-x`/`--extract` (Compress → Encrypt →
+      Base64). Encryption produces a high entropy output that is
+      unsuited for compression. So compression must come first in the
+      pipeline. Use [`flate2`](https://docs.rs/flate2/latest/flate2/)
+      with `rust_backend`.
 - [ ] Support in-place ciphering (with a temporary intermediate file).
 
 ## Installation

@@ -3,7 +3,9 @@ pub mod ui;
 
 use std::io::{Read, Write};
 
-use jolokia::{Base64Decode, Base64Encode, Base64Sink, Base64Source, Chacha20Poly1305, Cipher};
+use jolokia::base64::{Base64Sink, Base64Source};
+use jolokia::cipher::Chacha20Poly1305;
+use jolokia::traits::{Base64Decode, Base64Encode, Cipher};
 
 /// Generic cipher key used by jolokia (this is _not secure_!).
 pub const DEFAULT_KEY: &str = "edLKPT4jYaabmMwuKzgQwklMC9HxTYmhVY7qln4yrJM";

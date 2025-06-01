@@ -1,12 +1,12 @@
 //! Base64 encoding and decoding.
-//!
+
 use std::io::{self, Read, Write};
 
 use base64::engine;
 use base64::prelude::BASE64_STANDARD_NO_PAD;
 use base64::{read::DecoderReader, write::EncoderWriter};
 
-use super::traits::{self, Base64Decode, Base64Encode, Error};
+use crate::pipeline::traits::{self, Base64Decode, Base64Encode, Error};
 
 // TODO: Implement dedicated `encode_key()`/`decode_key()` methods.
 //  As per the `GeneralPurpose` engine docs:
@@ -16,11 +16,11 @@ use super::traits::{self, Base64Decode, Base64Encode, Error};
 
 impl Base64Encode for &[u8] {
     fn base64_encode(&self) -> String {
-        let mut writer = io::Cursor::new(self);
+        let mut reader = io::Cursor::new(self);
         let mut encoded = Vec::new();
         let mut base64_sink = Base64Sink::new(&mut encoded);
-        io::copy(&mut writer, &mut base64_sink).expect("this is all in memory");
-        std::mem::drop(base64_sink); // Explicit drop needed to reborrow `&mut base64`.
+        io::copy(&mut reader, &mut base64_sink).expect("this is all in memory");
+        std::mem::drop(base64_sink); // Explicit drop needed to reborrow `&mut encoded`.
         String::from_utf8_lossy(&encoded).to_string()
     }
 }
@@ -54,6 +54,7 @@ impl Base64Decode for String {
     }
 }
 
+/// When written to, it encodes the bytes as base64.
 pub struct Base64Sink<'a, W: Write> {
     encoder: EncoderWriter<'a, engine::GeneralPurpose, &'a mut W>,
 }
@@ -106,7 +107,7 @@ impl<T: Read> Read for NewlineTrimmer<'_, T> {
             if buf[..n].iter().any(|&c| c != b'\n') {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,
-                    "unexpected data after final newline",
+                    "Unexpected data after final newline",
                 ));
             }
         }
@@ -121,6 +122,7 @@ impl<T: Read> Read for NewlineTrimmer<'_, T> {
     }
 }
 
+/// When read from, it decodes base64 as bytes.
 pub struct Base64Source<'a, R: Read> {
     decoder: DecoderReader<'a, engine::GeneralPurpose, NewlineTrimmer<'a, R>>,
 }

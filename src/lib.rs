@@ -1,5 +1,5 @@
-pub mod cipher;
+pub mod pipeline;
 
-pub use cipher::base64::{Base64Sink, Base64Source};
-pub use cipher::chacha::Chacha20Poly1305;
-pub use cipher::traits::*;
+pub use pipeline::base64;
+pub use pipeline::cipher;
+pub use pipeline::traits;

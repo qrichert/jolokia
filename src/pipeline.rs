@@ -1,3 +1,3 @@
 pub mod base64;
-pub mod chacha;
+pub mod cipher;
 pub mod traits;
