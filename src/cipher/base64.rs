@@ -2,13 +2,11 @@
 //!
 use std::io::{self, Read, Write};
 
-use base64::engine::{self, Engine as _};
+use base64::engine;
 use base64::prelude::BASE64_STANDARD_NO_PAD;
 use base64::{read::DecoderReader, write::EncoderWriter};
 
-use super::traits::{
-    self, Base64Decode, Base64DecodeStream, Base64Encode, Base64EncodeStream, Error,
-};
+use super::traits::{self, Base64Decode, Base64Encode, Error};
 
 // TODO: Implement dedicated `encode_key()`/`decode_key()` methods.
 //  As per the `GeneralPurpose` engine docs:
@@ -18,7 +16,12 @@ use super::traits::{
 
 impl Base64Encode for &[u8] {
     fn base64_encode(&self) -> String {
-        BASE64_STANDARD_NO_PAD.encode(self)
+        let mut writer = io::Cursor::new(self);
+        let mut encoded = Vec::new();
+        let mut base64_sink = Base64Sink::new(&mut encoded);
+        io::copy(&mut writer, &mut base64_sink).expect("this is all in memory");
+        std::mem::drop(base64_sink); // Explicit drop needed to reborrow `&mut base64`.
+        String::from_utf8_lossy(&encoded).to_string()
     }
 }
 
@@ -36,43 +39,18 @@ impl Base64Encode for Vec<u8> {
 
 impl Base64Decode for &str {
     fn base64_decode(&self) -> traits::Result<Vec<u8>> {
-        match BASE64_STANDARD_NO_PAD.decode(self) {
-            Ok(bytes) => Ok(bytes),
-            Err(reason) => Err(Error::Base64Decode(reason.to_string())),
-        }
+        let mut reader = io::Cursor::new(self);
+        let mut decoded = Vec::new();
+        let mut base64_source = Base64Source::new(&mut reader);
+        io::copy(&mut base64_source, &mut decoded)
+            .map_err(|reason| Error::Base64Decode(reason.to_string()))?;
+        Ok(decoded)
     }
 }
 
 impl Base64Decode for String {
     fn base64_decode(&self) -> traits::Result<Vec<u8>> {
         self.as_str().base64_decode()
-    }
-}
-
-impl<R: Read> Base64EncodeStream for R {
-    fn base64_encode_stream<W: Write>(&mut self, writer: &mut W) -> traits::Result<()> {
-        let mut encoder = EncoderWriter::new(writer, &BASE64_STANDARD_NO_PAD);
-
-        std::io::copy(self, &mut encoder)
-            .map_err(|reason| Error::Base64StreamEncode(reason.to_string()))?;
-
-        // Flush; Encode all remaining buffered data and write it,
-        encoder
-            .finish()
-            .map_err(|reason| Error::Base64StreamEncode(reason.to_string()))?;
-
-        Ok(())
-    }
-}
-
-impl<R: Read> Base64DecodeStream for R {
-    fn base64_decode_stream<W: Write>(&mut self, writer: &mut W) -> traits::Result<()> {
-        let mut decoder = DecoderReader::new(self, &BASE64_STANDARD_NO_PAD);
-
-        std::io::copy(&mut decoder, writer)
-            .map_err(|reason| Error::Base64StreamDecode(reason.to_string()))?;
-
-        Ok(())
     }
 }
 
@@ -97,13 +75,60 @@ impl<W: Write> Write for Base64Sink<'_, W> {
     }
 }
 
+struct NewlineTrimmer<'a, R: Read> {
+    reader: &'a mut R,
+    is_trimmed: bool,
+}
+
+impl<'a, R: Read> NewlineTrimmer<'a, R> {
+    fn new(reader: &'a mut R) -> Self {
+        Self {
+            reader,
+            is_trimmed: false,
+        }
+    }
+}
+
+impl<T: Read> Read for NewlineTrimmer<'_, T> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let mut n = self.reader.read(buf)?;
+
+        if self.is_trimmed {
+            // Trimming is only allowed _once_ at the end.
+            //
+            // If we are here, it means we are reading _again_ after
+            // trimming. This is an error in the input, unless:
+            //
+            // - We read 0 bytes (EOF).
+            // - We read more `\n`s.
+            //
+            // Anything else is invalid.
+            if buf[..n].iter().any(|&c| c != b'\n') {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "unexpected data after final newline",
+                ));
+            }
+        }
+
+        // Trim trailing `\n`s and remember it.
+        while n > 0 && buf[n - 1] == b'\n' {
+            n -= 1;
+            self.is_trimmed = true;
+        }
+
+        Ok(n)
+    }
+}
+
 pub struct Base64Source<'a, R: Read> {
-    decoder: DecoderReader<'a, engine::GeneralPurpose, &'a mut R>,
+    decoder: DecoderReader<'a, engine::GeneralPurpose, NewlineTrimmer<'a, R>>,
 }
 
 impl<'a, R: Read> Base64Source<'a, R> {
     pub fn new(reader: &'a mut R) -> Self {
-        let decoder = DecoderReader::new(reader, &BASE64_STANDARD_NO_PAD);
+        let newline_stripper = NewlineTrimmer::new(reader);
+        let decoder = DecoderReader::new(newline_stripper, &BASE64_STANDARD_NO_PAD);
         Self { decoder }
     }
 }
@@ -116,7 +141,6 @@ impl<R: Read> Read for Base64Source<'_, R> {
 
 #[cfg(test)]
 pub mod tests {
-    use std::io::Cursor;
 
     use super::*;
 
@@ -142,53 +166,59 @@ pub mod tests {
     }
 
     #[test]
-    fn base64_encode_bytes_stream_short() {
+    fn base64_encode_sink_short() {
         let plaintext = b"hello, world!";
 
-        let mut buf = Vec::new();
-        Cursor::new(plaintext)
-            .base64_encode_stream(&mut buf)
-            .unwrap();
+        let mut writer = io::Cursor::new(plaintext);
+        let mut encoded = Vec::new();
+        let mut base64_sink = Base64Sink::new(&mut encoded);
+        io::copy(&mut writer, &mut base64_sink).unwrap();
+        std::mem::drop(base64_sink);
 
-        let base64 = String::from_utf8_lossy(&buf);
+        let base64 = String::from_utf8_lossy(&encoded);
 
         assert_eq!(base64, "aGVsbG8sIHdvcmxkIQ");
     }
 
     #[test]
-    fn base64_encode_bytes_stream_long() {
+    fn base64_encode_sink_long() {
         let plaintext = b"hello, world!".repeat(1000);
 
-        let mut buf = Vec::new();
-        Cursor::new(plaintext)
-            .base64_encode_stream(&mut buf)
-            .unwrap();
+        let mut writer = io::Cursor::new(plaintext);
+        let mut encoded = Vec::new();
+        let mut base64_sink = Base64Sink::new(&mut encoded);
+        io::copy(&mut writer, &mut base64_sink).unwrap();
+        std::mem::drop(base64_sink);
 
-        let base64 = String::from_utf8_lossy(&buf);
+        let base64 = String::from_utf8_lossy(&encoded);
 
         assert_eq!(base64, HELLO_WORLD_1000);
     }
 
     #[test]
-    fn base64_decode_string_stream_short() {
+    fn base64_decode_source_short() {
         let base64 = "aGVsbG8sIHdvcmxkIQ";
 
-        let mut buf = Vec::new();
-        Cursor::new(base64).base64_decode_stream(&mut buf).unwrap();
+        let mut reader = io::Cursor::new(base64);
+        let mut decoded = Vec::new();
+        let mut base64_source = Base64Source::new(&mut reader);
+        io::copy(&mut base64_source, &mut decoded).unwrap();
 
-        let plaintext = String::from_utf8_lossy(&buf);
+        let plaintext = String::from_utf8_lossy(&decoded);
 
         assert_eq!(plaintext, "hello, world!");
     }
 
     #[test]
-    fn base64_decode_string_stream_long() {
+    fn base64_decode_source_long() {
         let base64 = HELLO_WORLD_1000;
 
-        let mut buf = Vec::new();
-        Cursor::new(base64).base64_decode_stream(&mut buf).unwrap();
+        let mut reader = io::Cursor::new(base64);
+        let mut decoded = Vec::new();
+        let mut base64_source = Base64Source::new(&mut reader);
+        io::copy(&mut base64_source, &mut decoded).unwrap();
 
-        let plaintext = String::from_utf8_lossy(&buf);
+        let plaintext = String::from_utf8_lossy(&decoded);
 
         assert_eq!(plaintext, "hello, world!".repeat(1000));
     }

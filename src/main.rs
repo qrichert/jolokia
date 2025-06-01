@@ -53,7 +53,12 @@ fn execute_command(command: &cli::Command, args: &cli::Args) -> Result<(), Strin
             let key = get_key_or_default(args);
             let message = get_message_or_exit(args);
             let output = get_output_or_exit(args);
-            cmd::encrypt(key, message, output)
+            cmd::encrypt(
+                key,
+                message,
+                output,
+                !matches!(args.output, cli::Output::Redirected),
+            )
         }
         cli::Command::Decrypt => {
             ensure_input_neq_output_or_exit(args);

@@ -19,6 +19,7 @@ pub fn encrypt(
     key: &str,
     mut plaintext: Box<dyn Read>,
     mut output: Box<dyn Write>,
+    add_newline: bool,
 ) -> Result<(), String> {
     let key = match key.base64_decode() {
         Ok(key) => key,
@@ -31,6 +32,12 @@ pub fn encrypt(
         .map_err(|e| e.to_string())?;
 
     base64_sink.flush().map_err(|e| e.to_string())?;
+
+    if add_newline {
+        // Explicit drop needed to reborrow `&mut output`.
+        std::mem::drop(base64_sink);
+        _ = writeln!(output);
+    }
 
     Ok(())
 }
