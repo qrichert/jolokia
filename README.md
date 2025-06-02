@@ -37,7 +37,7 @@ hello, world!
   - [x] From file (show example with `tar`).
   - [ ] From directory (`-R`, `--recursive`).
 - [ ] Complete `--help`.
-- [ ] `-r`/`--raw` (if you don't want base64 output/input).
+- [x] `-r`/`--raw` (if you don't want base64 output/input).
 - [x] Streaming cipher (everything is ready for it, CLI and algos, the
       two are just not yet connected).
 - [ ] Choose `--algorithm` (`JOLOKIA_ALGORITHM`).

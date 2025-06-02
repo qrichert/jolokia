@@ -33,6 +33,7 @@ pub struct Args {
     pub key: Option<String>,
     pub message: Option<Message>,
     pub output: Output,
+    pub raw: bool,
     pub short_help: bool,
     pub long_help: bool,
     pub version: bool,
@@ -51,11 +52,21 @@ impl Args {
             let some_output = matches!(args.output, Output::File(_));
             let some_message = args.message.is_some();
 
+            let is_encrypt = args
+                .command
+                .as_ref()
+                .is_some_and(|c| matches!(c, Command::Encrypt));
+            let is_decrypt = args
+                .command
+                .as_ref()
+                .is_some_and(|c| matches!(c, Command::Decrypt));
+
             match arg.as_ref() {
                 "genkey" if !some_command => args.command = Some(Command::GenKey),
                 "encrypt" if !some_command => args.command = Some(Command::Encrypt),
                 "decrypt" if !some_command => args.command = Some(Command::Decrypt),
                 "-k" | "--key" if !some_key => args.key = cli_args.next().map(|k| k.to_string()),
+                "-r" | "--raw" => args.raw = true,
                 "-h" => args.short_help = true,
                 "--help" => args.long_help = true,
                 "-V" | "--version" => args.version = true,

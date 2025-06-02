@@ -54,14 +54,14 @@ fn execute_command(command: &cli::Command, args: &cli::Args) -> Result<(), Strin
             let key = get_key_or_default(args);
             let message = get_message_or_exit(args);
             let output = get_output_or_exit(args);
-            cmd::encrypt(key, message, output, add_newline)
+            cmd::encrypt(key, message, output, args.raw, add_newline)
         }
         cli::Command::Decrypt => {
             ensure_input_neq_output_or_exit(args);
             let key = get_key_or_default(args);
             let message = get_message_or_exit(args);
             let output = get_output_or_exit(args);
-            cmd::decrypt(key, message, output)
+            cmd::decrypt(key, message, output, args.raw)
         }
     }
 }
@@ -189,6 +189,7 @@ Commands:
 Args:
   <MESSAGE>
   -k, --key <KEY>        Cipher key (base64)
+  -r, --raw              Handle message as raw binary
   -f, --file <FILE>      Read message from file
   -o, --output <FILE>    Write output to file
 
@@ -268,6 +269,15 @@ Message:
 
       {h}${rt} jolokia encrypt \"hello, world\" -o encrypted.txt
       {h}${rt} jolokia decrypt -f encrypted.txt
+      hello, world
+
+Raw I/O:
+  If you do not want base64 encoding, you can pass the `--raw` or `-r`
+  flag. This makes sense for larger files for which you don't want the
+  ~30% size overhead of base64.
+
+      {h}${rt} jolokia encrypt --raw \"hello, world\" > hello.enc
+      {h}${rt} cat hello.enc | jolokia decrypt --raw
       hello, world
 ",
         help = short_help_message(),
