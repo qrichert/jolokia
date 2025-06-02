@@ -26,5 +26,7 @@ aead = { version = "0.5.2", features = ["stream"] }
 base64 = "0.22.1"
 # Chacha20-Poly1305 algorithm implementation.
 chacha20poly1305 = "0.10.1"
+# Zlib compression.
+flate2 = "1.1.1"
 # Output text through a pager.
 lessify = "0.4.0"

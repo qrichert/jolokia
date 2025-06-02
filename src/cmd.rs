@@ -5,6 +5,7 @@ use std::io::{Read, Write};
 
 use jolokia::base64::{Base64Sink, Base64Source};
 use jolokia::cipher::Chacha20Poly1305;
+use jolokia::compress::{CompressSource, ExtractSink};
 use jolokia::traits::{Base64Decode, Base64Encode, Cipher};
 
 /// Generic cipher key used by jolokia (this is _not secure_!).
@@ -25,11 +26,20 @@ pub fn encrypt(
     mut plaintext: Box<dyn Read>,
     mut output: Box<dyn Write>,
     from_raw_bytes: bool,
+    do_compress: bool,
     add_newline: bool,
 ) -> Result<(), String> {
     let key = match key.base64_decode() {
         Ok(key) => key,
         Err(reason) => return Err(reason.to_string()),
+    };
+
+    // Compress → Encrypt → Base64
+
+    let mut source = if do_compress {
+        Box::new(CompressSource::new(&mut plaintext)) as Box<dyn Read>
+    } else {
+        Box::new(&mut plaintext)
     };
 
     let mut sink = if from_raw_bytes {
@@ -38,7 +48,7 @@ pub fn encrypt(
         Box::new(Base64Sink::new(&mut output)) as Box<dyn Write>
     };
 
-    Chacha20Poly1305::encrypt_stream(&key, &mut plaintext, &mut sink).map_err(|e| e.to_string())?;
+    Chacha20Poly1305::encrypt_stream(&key, &mut source, &mut sink).map_err(|e| e.to_string())?;
 
     sink.flush().map_err(|e| e.to_string())?;
 
@@ -56,11 +66,14 @@ pub fn decrypt(
     mut ciphertext: Box<dyn Read>,
     mut output: Box<dyn Write>,
     to_raw_bytes: bool,
+    do_extract: bool,
 ) -> Result<(), String> {
     let key = match key.base64_decode() {
         Ok(key) => key,
         Err(reason) => return Err(reason.to_string()),
     };
+
+    // Base64 → Decrypt → Extract
 
     let mut source = if to_raw_bytes {
         Box::new(&mut ciphertext)
@@ -68,7 +81,15 @@ pub fn decrypt(
         Box::new(Base64Source::new(&mut ciphertext)) as Box<dyn Read>
     };
 
-    Chacha20Poly1305::decrypt_stream(&key, &mut source, &mut output).map_err(|e| e.to_string())?;
+    let mut sink = if do_extract {
+        Box::new(ExtractSink::new(&mut output)) as Box<dyn Write>
+    } else {
+        Box::new(&mut output)
+    };
+
+    Chacha20Poly1305::decrypt_stream(&key, &mut source, &mut sink).map_err(|e| e.to_string())?;
+
+    sink.flush().map_err(|e| e.to_string())?;
 
     Ok(())
 }

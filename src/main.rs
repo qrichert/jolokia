@@ -54,14 +54,14 @@ fn execute_command(command: &cli::Command, args: &cli::Args) -> Result<(), Strin
             let key = get_key_or_default(args);
             let message = get_message_or_exit(args);
             let output = get_output_or_exit(args);
-            cmd::encrypt(key, message, output, args.raw, add_newline)
+            cmd::encrypt(key, message, output, args.raw, args.compress, add_newline)
         }
         cli::Command::Decrypt => {
             ensure_input_neq_output_or_exit(args);
             let key = get_key_or_default(args);
             let message = get_message_or_exit(args);
             let output = get_output_or_exit(args);
-            cmd::decrypt(key, message, output, args.raw)
+            cmd::decrypt(key, message, output, args.raw, args.extract)
         }
     }
 }
@@ -279,6 +279,28 @@ Raw I/O:
       {h}${rt} jolokia encrypt --raw \"hello, world\" > hello.enc
       {h}${rt} cat hello.enc | jolokia decrypt --raw
       hello, world
+
+  If you care more about size than about speed, consider compressing the
+  output.
+
+Compression:
+  {package} offers built-in compression. It is not active by default
+  because it makes encryption slower, but it you want it, you can pass
+  the `--compress` or `-c` and `--extract` or `-x` to `encrypt` and
+  `decrypt`, respectively.
+
+      {h}${rt} jolokia encrypt --compress -r -f cat.png -o cat.comp
+      {h}${rt} jolokia decrypt --extract -r -f cat.comp -o cat.png
+
+  Compression uses Zlib with the highest compression setting (at the
+  expense of speed). The reasoning is since it's optional, if you
+  activate it, you probably really need it and so you get it in full.
+
+  Note: `--extract` must be passed explicitly. If you try to `decrypt`
+  a compressed message without that flag, it will fail.
+
+  It makes sense to combine `--compress` with `--raw` to get the
+  smallest file size possible.
 ",
         help = short_help_message(),
         bin = env!("CARGO_BIN_NAME"),
