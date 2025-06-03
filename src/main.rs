@@ -223,24 +223,24 @@ Key:
 
   To generate a new key run:
 
-      {h}${rt} jolokia genkey
+      {h}${rt} {bin} genkey
       hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w
 
   To use the key, pass it as `--key` or `-k`:
 
-      {h}${rt} jolokia encrypt \"foo\" --key hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w
+      {h}${rt} {bin} encrypt \"foo\" --key hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w
       Q0gyMAGSwlWJdALzAAAAE448viN3l+rwa7W4RdkRI0V/VckAAAAA
 
   Or as an environment variable (but `--key` has precedence):
 
       {h}${rt} export {key_env_var}=hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w
-      {h}${rt} jolokia encrypt \"foo\"
+      {h}${rt} {bin} encrypt \"foo\"
       Q0gyMAGSwlWJdALzAAAAE448viN3l+rwa7W4RdkRI0V/VckAAAAA
 
   The key can also be the name of a file that contains a key:
 
       {h}${rt} echo hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w > /secrets/{bin}.key
-      {h}${rt} jolokia decrypt --key /secrets/{bin}.key Q0gyMAGSwlWJdALzAAAAE448viN3l+rwa7W4RdkRI0V/VckAAAAA
+      {h}${rt} {bin} decrypt --key /secrets/{bin}.key Q0gyMAGSwlWJdALzAAAAE448viN3l+rwa7W4RdkRI0V/VckAAAAA
       foo
 
   To set a key permanently, the recommended solution is to point the
@@ -252,33 +252,49 @@ Key:
 Message:
   The message can be passed on the command line:
 
-      {h}${rt} jolokia encrypt \"bar\"
+      {h}${rt} {bin} encrypt \"bar\"
       Q0gyMAHPNRsLieAOAAAAE/ssTCh2zCm73t+aQf9aKNepgPkAAAAA
 
   Or from a file:
 
-      {h}${rt} jolokia encrypt --file bar.txt
+      {h}${rt} {bin} encrypt --file bar.txt
       Q0gyMAHPNRsLieAOAAAAE/ssTCh2zCm73t+aQf9aKNepgPkAAAAA
 
   Or via `stdin` (but the command line has precedence):
 
-      {h}${rt} cat bar.txt | jolokia encrypt
+      {h}${rt} cat bar.txt | {bin} encrypt
       Q0gyMAHPNRsLieAOAAAAE/ssTCh2zCm73t+aQf9aKNepgPkAAAAA
 
   By definition, you can round-trip it:
 
-      {h}${rt} jolokia encrypt \"hello, world\" -o encrypted.txt
-      {h}${rt} jolokia decrypt -f encrypted.txt
+      {h}${rt} {bin} encrypt \"hello, world\" -o encrypted.txt
+      {h}${rt} {bin} decrypt -f encrypted.txt
       hello, world
 
 Raw I/O:
   If you do not want base64 encoding, you can pass the `--raw` or `-r`
   flag. This makes sense for larger files for which you don't want the
-  ~30% size overhead of base64.
+  ~33% size overhead of base64.
 
-      {h}${rt} jolokia encrypt --raw \"hello, world\" > hello.enc
-      {h}${rt} cat hello.enc | jolokia decrypt --raw
+      {h}${rt} {bin} encrypt --raw \"hello, world\" > hello.enc
+      {h}${rt} cat hello.enc | {bin} decrypt --raw
       hello, world
+
+Compression:
+  BYOC. {package} does not provide built-in compression, but you can
+  bring your own:
+
+      {h}${rt} gzip -c cat.gif | {bin} encrypt -r > out.enc
+      {h}${rt} {bin} decrypt -r -f out.enc | gunzip > cat.gif
+
+  If you need to compress and encrypt multiple files or directories,
+  consider `tar`ing them:
+
+      {h}${rt} tar -czf - cat.gif more-gifs/ | {bin} encrypt -r > out.enc
+      {h}${rt} {bin} decrypt -r -f out.enc | tar -xzf -
+
+  It makes sense to combine compression with `--raw` to get the smallest
+  file size possible.
 ",
         help = short_help_message(),
         bin = env!("CARGO_BIN_NAME"),

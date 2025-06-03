@@ -48,11 +48,6 @@ hello, world!
       `JOLOKIA_CIPHER_KEY_CHACHA20POLY1305`?). If so, rename
       `JOLOKIA_CIPHER_KEY` to just `JOLOKIA_KEY`.
 - [ ] Zeroize secrets.
-- [ ] `-c`/`--compress` and `-x`/`--extract` (Compress → Encrypt →
-      Base64). Encryption produces a high entropy output that is
-      unsuited for compression. So compression must come first in the
-      pipeline. Use [`flate2`](https://docs.rs/flate2/latest/flate2/)
-      with `rust_backend`.
 - [ ] Support in-place ciphering (with a temporary intermediate file).
 
 ## Installation

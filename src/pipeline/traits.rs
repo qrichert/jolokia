@@ -22,7 +22,7 @@ impl fmt::Display for Error {
 Could not decrypt input.
 You are likely using the wrong key, or the data is corrupted."
             ),
-            Self::Algorithm => write!(f, "Incompatible algorithm."),
+            Self::Algorithm => write!(f, "Incompatible cipher algorithm."),
             Self::Base64Decode(reason) => write!(f, "Could not decode base64: {reason}"),
             Self::Read(reason) => write!(f, "Could not read from input: {reason}"),
             Self::Write(reason) => write!(f, "Could not write to output: {reason}"),

@@ -52,15 +52,6 @@ impl Args {
             let some_output = matches!(args.output, Output::File(_));
             let some_message = args.message.is_some();
 
-            let is_encrypt = args
-                .command
-                .as_ref()
-                .is_some_and(|c| matches!(c, Command::Encrypt));
-            let is_decrypt = args
-                .command
-                .as_ref()
-                .is_some_and(|c| matches!(c, Command::Decrypt));
-
             match arg.as_ref() {
                 "genkey" if !some_command => args.command = Some(Command::GenKey),
                 "encrypt" if !some_command => args.command = Some(Command::Encrypt),
