@@ -213,6 +213,9 @@ What does {package} do?
   symmetric encryption (explain),
   need a key
 
+  If you need a refresher on symmetric and asymmetric encryption, read
+  the section at the bottom.
+
 Algorithms:
   {u}Name{rt}                 {u}Key Size{rt}
   Chacha20-Poly1305    32-bytes (256-bits)
@@ -295,6 +298,59 @@ Compression:
 
   It makes sense to combine compression with `--raw` to get the smallest
   file size possible.
+
+Symmetric vs. Asymmetric Encryption and Authentication:
+  With symmetric encryption, all parties share the same key. Anyone who
+  has access to the key can both encrypt and decrypt messages.
+
+  Say Bob wants to send a secret message to Alice over a public network.
+  Then Bob encrypts the message with the key, and sends it encrypted
+  over the public network. Anyone can see the encrypted message, but
+  only Alice shares the key with Bob, so only Alice can decrypt it.
+
+  This process is simple, but it has a flaw: unless Alice and Bob meet
+  in person, there is no way for them to share the secret key using only
+  symmetric encryption. If Bob generates a key, he can't send it in
+  plain to Alice, because other people would see the key too, and he
+  can't send it encrypted, because how would Alice decrypt it if they
+  don't share a key yet? This is where asymmetric encryption comes in.
+
+  With asymmetric encryption, there are two keys: a private key and a
+  public key. Only one person has access to the private key, but
+  everyone can have the public key. The public key is used to encrypt
+  messages, and the only way to decrypt them is with the private key.
+  In asymmetric encryption, a key either encrypts or decrypts, but it
+  cannot do both.
+
+  If Bob wants to send a secret message to Alice, Alice must first
+  generate a key pair. Only Alice will ever see the secret key, but she
+  can send the public key in plain to Bob. Then Bob uses Alice's public
+  key to encrypt the message. At this point, not even Bob can decrypt
+  what he just encrypted. The public key in his possession can only
+  encrypt. The only person who can decrypt the message is Alice, using
+  her private key.
+
+  This is a common pattern: you first use asymmetric encryption to
+  exchange a symmetric key, and then you use symmetric encryption for
+  convenience.
+
+  Another use case for asymmetric encryption is authentication. Not only
+  the public key can encrypt messages, the private key can too. And in
+  that case, you use the public key for decryption.
+
+  If Alice encrypts the message: \"I am Alice!\" with her private key,
+  anyone in posession of Alice's public key can be certain that Alice
+  wrote that message. The only way that Alice's public key can decrypt
+  it, is that it was encrypted, or _signed_, by Alice's private key.
+
+  If Bob, who is not is possession of Alice's secret key, wrote \"I am
+  Alice!\" and signed the message, then Alice's public key would not be
+  able to decrypt it, and everyone would know that it wasn't really
+  Alice who wrote it.
+
+  That is, signatures are only as worthy as your trust in the public
+  key. The cryptography works, but how much do you _trust_ that the
+  public key you have really belongs to Alice?
 ",
         help = short_help_message(),
         bin = env!("CARGO_BIN_NAME"),
