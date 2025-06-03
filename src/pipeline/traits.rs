@@ -5,9 +5,8 @@ use std::io::{self, Read, Write};
 pub enum Error {
     Encrypt,
     Decrypt,
-    CipherAlgorithm,
+    Algorithm,
     Base64Decode(String),
-    Extract(String),
     Read(String),
     Write(String),
     Platform(String),
@@ -23,9 +22,8 @@ impl fmt::Display for Error {
 Could not decrypt input.
 You are likely using the wrong key, or the data is corrupted."
             ),
-            Self::CipherAlgorithm => write!(f, "Incompatible cipher algorithm."),
+            Self::Algorithm => write!(f, "Incompatible algorithm."),
             Self::Base64Decode(reason) => write!(f, "Could not decode base64: {reason}"),
-            Self::Extract(reason) => write!(f, "Could not extract data: {reason}"),
             Self::Read(reason) => write!(f, "Could not read from input: {reason}"),
             Self::Write(reason) => write!(f, "Could not write to output: {reason}"),
             Self::Platform(reason) => write!(f, "{reason}"),
@@ -94,18 +92,4 @@ pub trait Base64Decode {
     ///
     /// Errors if `self` does not contain valid base64.
     fn base64_decode(&self) -> Result<Vec<u8>>;
-}
-
-pub trait Compress {
-    /// Compress `self` into an array of bytes.
-    fn compress(&self) -> Vec<u8>;
-}
-
-pub trait Extract {
-    /// Extract `self` into an array of bytes.
-    ///
-    /// # Errors
-    ///
-    /// Errors if `self` does not contain valid compressed data.
-    fn extract(&self) -> Result<Vec<u8>>;
 }

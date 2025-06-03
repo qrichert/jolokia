@@ -133,12 +133,12 @@ impl Cipher for Chacha20Poly1305 {
         let key = Key::from_slice(key);
         let cipher = ChaCha20Poly1305::new(key);
 
-        let mut header = [0u8; HEADER.len()];
+        let mut header = [0u8; 5];
         reader
             .read_exact(&mut header)
             .map_err(|e| Error::Read(e.to_string()))?;
         if &header != HEADER {
-            return Err(Error::CipherAlgorithm);
+            return Err(Error::Algorithm);
         }
 
         let mut nonce_prefix = [0u8; 7];
