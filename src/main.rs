@@ -215,7 +215,7 @@ What does {package} do?
 
 Algorithms:
   {u}Name{rt}                 {u}Key Size{rt}
-  Chacha20-Poly1305    32-bytes (256-bits)
+  ChaCha20-Poly1305    32-bytes (256-bits)
 
 Key:
   In {package}, a key is always a base64-encoded string of bytes. The

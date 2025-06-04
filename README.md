@@ -41,8 +41,9 @@ hello, world!
 - [x] Streaming cipher (everything is ready for it, CLI and algos, the
       two are just not yet connected).
 - [ ] Choose `--algorithm` (`JOLOKIA_ALGORITHM`).
-  - [x] Chacha20-Poly1305
+  - [x] ChaCha20-Poly1305
   - [ ] ROT13 (useless, but forces generic design).
+  - [ ] RSA
 - [ ] If multiple algorithms, should we keep `JOLOKIA_CIPHER_KEY` as
       default also support specialized:
       `JOLOKIA_CIPHER_KEY_CHACHA20POLY1305`?). If so, rename

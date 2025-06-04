@@ -1,3 +1,3 @@
 pub mod chacha;
 
-pub use chacha::Chacha20Poly1305;
+pub use chacha::ChaCha20Poly1305;
