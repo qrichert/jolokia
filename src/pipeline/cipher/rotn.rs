@@ -143,17 +143,17 @@ pub mod tests {
 
     #[test]
     fn rot_encrypt_with_n_is_correct() {
-        let plaintext = "attack at dawn".as_bytes();
+        let plaintext = b"attack at dawn";
         // Do not use `13` here, or ROT-13 symmetry may hide bugs.
         let encrypted = RotN::new().encrypt(&[5], plaintext).unwrap();
-        assert_eq!(&encrypted, "fyyfhp fy ifbs".as_bytes());
+        assert_eq!(&encrypted, b"fyyfhp fy ifbs");
     }
 
     #[test]
     fn rot_decrypt_with_n_is_correct() {
-        let ciphertext = "fyyfhp fy ifbs".as_bytes();
+        let ciphertext = b"fyyfhp fy ifbs";
         let decrypted = RotN::new().decrypt(&[5], ciphertext).unwrap();
-        assert_eq!(&decrypted, "attack at dawn".as_bytes());
+        assert_eq!(&decrypted, b"attack at dawn");
     }
 
     #[test]
@@ -178,23 +178,23 @@ pub mod tests {
 
     #[test]
     fn rot_empty_input_is_noop() {
-        let plaintext = "".as_bytes();
+        let plaintext = b"";
         let encrypted = RotN::new().encrypt(&[13], plaintext).unwrap();
-        assert_eq!(&encrypted, "".as_bytes());
+        assert_eq!(&encrypted, b"");
     }
 
     #[test]
     fn rot_ignores_non_ascii_letters() {
-        let plaintext = "1234!@#$%^&*()_+-=[]{}|;:',.<>?/".as_bytes();
+        let plaintext = b"1234!@#$%^&*()_+-=[]{}|;:',.<>?/";
         let encrypted = RotN::new().encrypt(&[7], plaintext).unwrap();
         assert_eq!(&encrypted, plaintext); // Should remain unchanged.
     }
 
     #[test]
     fn rot_preserves_mixed_case_and_nonletters() {
-        let plaintext = "Hello, World! 123".as_bytes();
+        let plaintext = b"Hello, World! 123";
         let encrypted = RotN::new().encrypt(&[5], plaintext).unwrap();
-        assert_eq!(&encrypted, "Mjqqt, Btwqi! 123".as_bytes());
+        assert_eq!(&encrypted, b"Mjqqt, Btwqi! 123");
 
         let decrypted = RotN::new().decrypt(&[5], &encrypted).unwrap();
         assert_eq!(&decrypted, plaintext);
@@ -202,7 +202,7 @@ pub mod tests {
 
     #[test]
     fn rot_round_trip_with_arbitrary_n() {
-        let plaintext = "Encrypt this message properly.".as_bytes();
+        let plaintext = b"Encrypt this message properly.";
         let n = 19;
         let encrypted = RotN::new().encrypt(&[n], plaintext).unwrap();
         let decrypted = RotN::new().decrypt(&[n], &encrypted).unwrap();
@@ -218,8 +218,7 @@ pub mod tests {
             let decrypted = RotN::new().decrypt(&[key], &encrypted).unwrap();
             assert_eq!(
                 &decrypted, plaintext,
-                "Failed for key {}: round-trip mismatch",
-                key
+                "Failed for key {key}: round-trip mismatch",
             );
         }
     }
