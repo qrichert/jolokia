@@ -6,6 +6,8 @@ use std::{env, fs};
 
 use lessify::Pager;
 
+use jolokia::traits::Cipher;
+
 use cmd::{cli, ui};
 
 fn main() {
@@ -46,22 +48,25 @@ Try '{bin} -h' for help.",
 }
 
 fn execute_command(command: &cli::Command, args: &cli::Args) -> Result<(), String> {
+    let algorithm = args.algorithm.unwrap_or_default();
+    let cipher: Box<dyn Cipher> = algorithm.into();
     let add_newline = !matches!(args.output, cli::Output::Redirected);
+
     match command {
-        cli::Command::GenKey => cmd::genkey(add_newline),
+        cli::Command::GenKey => cmd::genkey(cipher.as_ref(), add_newline),
         cli::Command::Encrypt => {
             ensure_input_neq_output_or_exit(args);
-            let key = get_key_or_default(args);
+            let key = get_key_or_default(args, algorithm);
             let message = get_message_or_exit(args);
             let output = get_output_or_exit(args);
-            cmd::encrypt(key, message, output, args.raw, add_newline)
+            cmd::encrypt(cipher.as_ref(), key, message, output, args.raw, add_newline)
         }
         cli::Command::Decrypt => {
             ensure_input_neq_output_or_exit(args);
-            let key = get_key_or_default(args);
+            let key = get_key_or_default(args, algorithm);
             let message = get_message_or_exit(args);
             let output = get_output_or_exit(args);
-            cmd::decrypt(key, message, output, args.raw)
+            cmd::decrypt(cipher.as_ref(), key, message, output, args.raw)
         }
     }
 }
@@ -90,7 +95,7 @@ Please write to a separate file, and rename it afterwards.",
     }
 }
 
-fn get_key_or_default(args: &cli::Args) -> &str {
+fn get_key_or_default(args: &cli::Args, algorithm: cli::Algorithm) -> &str {
     if let Some(ref key) = args.key {
         key.as_str()
     } else {
@@ -111,7 +116,7 @@ with `--key`, or set the `{key_env_var}` environment variable.
             b = ui::Color::maybe_color(ui::color::BOLD),
             rt = ui::Color::maybe_color(ui::color::RESET),
         );
-        cmd::DEFAULT_KEY
+        algorithm.default_key()
     }
 }
 

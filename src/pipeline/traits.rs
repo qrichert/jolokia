@@ -6,6 +6,7 @@ pub enum Error {
     Encrypt,
     Decrypt,
     Algorithm,
+    Key,
     Base64Decode(String),
     Read(String),
     Write(String),
@@ -23,6 +24,7 @@ Could not decrypt input.
 You are likely using the wrong key, or the data is corrupted."
             ),
             Self::Algorithm => write!(f, "Incompatible cipher algorithm."),
+            Self::Key => write!(f, "The key is not compatible with the algoritm."),
             Self::Base64Decode(reason) => write!(f, "Could not decode base64: {reason}"),
             Self::Read(reason) => write!(f, "Could not read from input: {reason}"),
             Self::Write(reason) => write!(f, "Could not write to output: {reason}"),
@@ -33,10 +35,20 @@ You are likely using the wrong key, or the data is corrupted."
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+pub enum GeneratedKey {
+    Symmetric(Vec<u8>),
+    // Asymmetric { private: Vec<u8>, public: Vec<u8> },
+    // None,
+}
+
 pub trait Cipher {
+    fn new() -> Self
+    where
+        Self: Sized;
+
     /// Generate cipher Key.
     #[must_use]
-    fn generate_key() -> Vec<u8>;
+    fn generate_key(&self) -> GeneratedKey;
 
     /// Encrypt plain bytes with key.
     ///
@@ -44,9 +56,9 @@ pub trait Cipher {
     ///
     /// Errors if encryption fails. Encryption failures are opaque due
     /// to security concerns.
-    fn encrypt(key: &[u8], plaintext: &[u8]) -> Result<Vec<u8>> {
+    fn encrypt(&self, key: &[u8], plaintext: &[u8]) -> Result<Vec<u8>> {
         let mut encrypted = Vec::new();
-        Self::encrypt_stream(key, &mut io::Cursor::new(plaintext), &mut encrypted)?;
+        self.encrypt_stream(key, &mut io::Cursor::new(plaintext), &mut encrypted)?;
         Ok(encrypted)
     }
 
@@ -56,9 +68,9 @@ pub trait Cipher {
     ///
     /// Errors if decryption fails. Decryption failures are opaque due
     /// to security concerns.
-    fn decrypt(key: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>> {
+    fn decrypt(&self, key: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>> {
         let mut decrypted = Vec::new();
-        Self::decrypt_stream(key, &mut io::Cursor::new(ciphertext), &mut decrypted)?;
+        self.decrypt_stream(key, &mut io::Cursor::new(ciphertext), &mut decrypted)?;
         Ok(decrypted)
     }
 
@@ -68,7 +80,12 @@ pub trait Cipher {
     ///
     /// Errors if encryption fails, or if read/write fails. Encryption
     /// failures are opaque due to security concerns.
-    fn encrypt_stream<R: Read, W: Write>(key: &[u8], reader: &mut R, writer: &mut W) -> Result<()>;
+    fn encrypt_stream(
+        &self,
+        key: &[u8],
+        reader: &mut dyn Read,
+        writer: &mut dyn Write,
+    ) -> Result<()>;
 
     /// Encrypt stream of plain bytes with key.
     ///
@@ -76,7 +93,12 @@ pub trait Cipher {
     ///
     /// Errors if decryption fails, or if read/write fails. Decryption
     /// failures are opaque due to security concerns.
-    fn decrypt_stream<R: Read, W: Write>(key: &[u8], reader: &mut R, writer: &mut W) -> Result<()>;
+    fn decrypt_stream(
+        &self,
+        key: &[u8],
+        reader: &mut dyn Read,
+        writer: &mut dyn Write,
+    ) -> Result<()>;
 }
 
 pub trait Base64Encode {

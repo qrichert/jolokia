@@ -4,41 +4,40 @@ pub mod ui;
 use std::io::{Read, Write};
 
 use jolokia::base64::{Base64Sink, Base64Source};
-use jolokia::cipher::ChaCha20Poly1305;
-use jolokia::traits::{Base64Decode, Base64Encode, Cipher};
-
-/// Generic cipher key used by jolokia (this is _not secure_!).
-pub const DEFAULT_KEY: &str = "edLKPT4jYaabmMwuKzgQwklMC9HxTYmhVY7qln4yrJM";
+use jolokia::traits::{Base64Decode, Base64Encode, Cipher, GeneratedKey};
 
 #[allow(clippy::unnecessary_wraps)] // Keep return type consistent.
-pub fn genkey(add_newline: bool) -> Result<(), String> {
-    let key = ChaCha20Poly1305::generate_key().base64_encode();
-    print!("{key}");
+pub fn genkey(cipher: &dyn Cipher, add_newline: bool) -> Result<(), String> {
+    match cipher.generate_key() {
+        GeneratedKey::Symmetric(key) => {
+            print!("{}", key.base64_encode());
+        }
+    }
     if add_newline {
         println!();
     }
     Ok(())
 }
 
-pub fn encrypt(
+pub fn encrypt<R: Read, W: Write>(
+    cipher: &dyn Cipher,
     key: &str,
-    mut plaintext: Box<dyn Read>,
-    mut output: Box<dyn Write>,
+    mut plaintext: R,
+    mut output: W,
     from_raw_bytes: bool,
     add_newline: bool,
 ) -> Result<(), String> {
-    let key = match key.base64_decode() {
-        Ok(key) => key,
-        Err(reason) => return Err(reason.to_string()),
-    };
+    let key = decode_base64_key(key)?;
 
-    let mut sink = if from_raw_bytes {
+    let mut sink: Box<dyn Write> = if from_raw_bytes {
         Box::new(&mut output)
     } else {
-        Box::new(Base64Sink::new(&mut output)) as Box<dyn Write>
+        Box::new(Base64Sink::new(&mut output))
     };
 
-    ChaCha20Poly1305::encrypt_stream(&key, &mut plaintext, &mut sink).map_err(|e| e.to_string())?;
+    cipher
+        .encrypt_stream(&key, &mut plaintext, &mut sink)
+        .map_err(|e| e.to_string())?;
 
     sink.flush().map_err(|e| e.to_string())?;
 
@@ -51,24 +50,31 @@ pub fn encrypt(
     Ok(())
 }
 
-pub fn decrypt(
+pub fn decrypt<R: Read, W: Write>(
+    cipher: &dyn Cipher,
     key: &str,
-    mut ciphertext: Box<dyn Read>,
-    mut output: Box<dyn Write>,
+    mut ciphertext: R,
+    mut output: W,
     to_raw_bytes: bool,
 ) -> Result<(), String> {
-    let key = match key.base64_decode() {
-        Ok(key) => key,
-        Err(reason) => return Err(reason.to_string()),
-    };
+    let key = decode_base64_key(key)?;
 
-    let mut source = if to_raw_bytes {
+    let mut source: Box<dyn Read> = if to_raw_bytes {
         Box::new(&mut ciphertext)
     } else {
-        Box::new(Base64Source::new(&mut ciphertext)) as Box<dyn Read>
+        Box::new(Base64Source::new(&mut ciphertext))
     };
 
-    ChaCha20Poly1305::decrypt_stream(&key, &mut source, &mut output).map_err(|e| e.to_string())?;
+    cipher
+        .decrypt_stream(&key, &mut source, &mut output)
+        .map_err(|e| e.to_string())?;
 
     Ok(())
+}
+
+fn decode_base64_key(key: &str) -> Result<Vec<u8>, String> {
+    match key.base64_decode() {
+        Ok(key) => Ok(key),
+        Err(reason) => Err(reason.to_string()),
+    }
 }

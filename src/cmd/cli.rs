@@ -1,6 +1,10 @@
 use std::fs;
 use std::io::{self, IsTerminal};
 use std::path::PathBuf;
+use std::str::FromStr;
+
+use jolokia::cipher;
+use jolokia::traits::Cipher;
 
 pub const KEY_ENV_VAR: &str = "JOLOKIA_CIPHER_KEY";
 
@@ -9,6 +13,41 @@ pub enum Command {
     GenKey,
     Encrypt,
     Decrypt,
+}
+
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
+pub enum Algorithm {
+    #[default]
+    ChaCha20Poly1305,
+}
+
+impl Algorithm {
+    /// Generic cipher key used by jolokia (this is _not secure_!).
+    pub fn default_key(self) -> &'static str {
+        match self {
+            Self::ChaCha20Poly1305 => "edLKPT4jYaabmMwuKzgQwklMC9HxTYmhVY7qln4yrJM",
+        }
+    }
+}
+
+impl FromStr for Algorithm {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = s.to_lowercase();
+        match s.as_str() {
+            "chacha20-poly1305" => Ok(Self::ChaCha20Poly1305),
+            _ => Err(()),
+        }
+    }
+}
+
+impl From<Algorithm> for Box<dyn Cipher> {
+    fn from(value: Algorithm) -> Self {
+        match value {
+            Algorithm::ChaCha20Poly1305 => Box::new(cipher::ChaCha20Poly1305),
+        }
+    }
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -30,10 +69,11 @@ pub enum Output {
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct Args {
     pub command: Option<Command>,
+    pub algorithm: Option<Algorithm>,
     pub key: Option<String>,
+    pub raw: bool,
     pub message: Option<Message>,
     pub output: Output,
-    pub raw: bool,
     pub short_help: bool,
     pub long_help: bool,
     pub version: bool,
@@ -48,32 +88,52 @@ impl Args {
 
         while let Some(arg) = cli_args.next() {
             let some_command = args.command.is_some();
+            let some_algorithm = args.algorithm.is_some();
             let some_key = args.key.is_some();
             let some_output = matches!(args.output, Output::File(_));
             let some_message = args.message.is_some();
 
+            let is_genkey = args
+                .command
+                .as_ref()
+                .is_some_and(|c| matches!(c, Command::GenKey));
+
             match arg.as_ref() {
-                "genkey" if !some_command => args.command = Some(Command::GenKey),
-                "encrypt" if !some_command => args.command = Some(Command::Encrypt),
-                "decrypt" if !some_command => args.command = Some(Command::Decrypt),
-                "-k" | "--key" if !some_key => args.key = cli_args.next().map(|k| k.to_string()),
-                "-r" | "--raw" => args.raw = true,
                 "-h" => args.short_help = true,
                 "--help" => args.long_help = true,
                 "-V" | "--version" => args.version = true,
-                "-o" | "--output" => {
-                    if some_command && !some_output {
-                        if let Some(file) = cli_args.next() {
-                            args.output = Output::File(PathBuf::from(file.as_ref()));
-                        }
-                    }
+                "genkey" if !some_command => args.command = Some(Command::GenKey),
+                "encrypt" if !some_command => args.command = Some(Command::Encrypt),
+                "decrypt" if !some_command => args.command = Some(Command::Decrypt),
+                "-a" | "--algorithm" if some_command && !some_algorithm => {
+                    let Some(algorithm) = cli_args.next() else {
+                        return Err(format!("Expected algorithm after '{}'", arg.as_ref()));
+                    };
+                    let Ok(algorithm) = algorithm.as_ref().parse() else {
+                        return Err(format!("Unrecognized algorithm '{}'", algorithm.as_ref()));
+                    };
+                    args.algorithm = Some(algorithm);
+                }
+                "-k" | "--key" if some_command && !is_genkey && !some_key => {
+                    let Some(key) = cli_args.next() else {
+                        return Err(format!("Expected key after '{}'", arg.as_ref()));
+                    };
+                    args.key = Some(key.to_string());
+                }
+                "-r" | "--raw" if some_command && !is_genkey => args.raw = true,
+                "-o" | "--output" if some_command && !some_output => {
+                    let Some(file) = cli_args.next() else {
+                        return Err(format!("Expected file name after '{}'", arg.as_ref()));
+                    };
+                    args.output = Output::File(PathBuf::from(file.as_ref()));
                 }
                 "-f" | "--file" if some_command && !some_message => {
-                    args.message = cli_args
-                        .next()
-                        .map(|m| Message::File(PathBuf::from(m.as_ref())));
+                    let Some(file) = cli_args.next() else {
+                        return Err(format!("Expected file name after '{}'", arg.as_ref()));
+                    };
+                    args.message = Some(Message::File(PathBuf::from(file.as_ref())));
                 }
-                message if some_command && !some_message => {
+                message if some_command && !is_genkey && !some_message => {
                     args.message = Some(Message::String(message.to_string()));
                 }
                 unknown => {
@@ -156,8 +216,8 @@ mod tests {
 
     #[test]
     fn second_command_does_not_override_genkey() {
-        let args = Args::build_from_args(["genkey", "encrypt"].iter()).unwrap();
-        assert!(args.command.is_some_and(|c| c == Command::GenKey));
+        let err = Args::build_from_args(["genkey", "encrypt"].iter()).unwrap_err();
+        assert!(err.contains("'encrypt'"));
     }
 
     #[test]
@@ -185,9 +245,99 @@ mod tests {
     }
 
     #[test]
-    fn command_unknown_is_error() {
-        let err = Args::build_from_args(["unknown"].iter()).unwrap_err();
-        assert!(err.contains("'unknown'"));
+    fn default_algorithm() {
+        assert_eq!(Algorithm::default(), Algorithm::ChaCha20Poly1305);
+    }
+
+    #[test]
+    fn option_algorithm_default() {
+        let args = Args::build_from_args(["encrypt"].iter()).unwrap();
+        assert!(args.algorithm.is_none());
+    }
+
+    #[test]
+    fn option_short_algorithm_regular() {
+        let args = Args::build_from_args(["encrypt", "-a", "ChaCha20-Poly1305"].iter()).unwrap();
+        assert!(matches!(args.algorithm, Some(Algorithm::ChaCha20Poly1305)));
+    }
+
+    #[test]
+    fn option_long_algorithm_regular() {
+        let args =
+            Args::build_from_args(["encrypt", "--algorithm", "ChaCha20-Poly1305"].iter()).unwrap();
+        assert!(matches!(args.algorithm, Some(Algorithm::ChaCha20Poly1305)));
+    }
+
+    #[test]
+    fn option_key_default() {
+        let args = Args::build_from_args(["encrypt"].iter()).unwrap();
+        assert!(args.key.is_none());
+    }
+
+    #[test]
+    fn option_short_key_regular() {
+        let args = Args::build_from_args(["encrypt", "-k", "abcdef"].iter()).unwrap();
+        assert!(args.key.is_some_and(|k| k == "abcdef"));
+    }
+
+    #[test]
+    fn option_long_key_regular() {
+        let args = Args::build_from_args(["encrypt", "--key", "abcdef"].iter()).unwrap();
+        assert!(args.key.is_some_and(|k| k == "abcdef"));
+    }
+
+    #[test]
+    fn option_raw_default() {
+        let args = Args::build_from_args(["encrypt"].iter()).unwrap();
+        assert!(!args.raw);
+    }
+
+    #[test]
+    fn option_short_raw_regular() {
+        let args = Args::build_from_args(["encrypt", "-r"].iter()).unwrap();
+        assert!(args.raw);
+    }
+
+    #[test]
+    fn option_long_raw_regular() {
+        let args = Args::build_from_args(["encrypt", "--raw"].iter()).unwrap();
+        assert!(args.raw);
+    }
+
+    #[test]
+    fn option_output_default() {
+        let args = Args::build_from_args(["encrypt"].iter()).unwrap();
+        assert!(args.output == Output::Stdout);
+    }
+
+    #[test]
+    fn option_short_output_regular() {
+        let args = Args::build_from_args(["encrypt", "-o", "out.enc"].iter()).unwrap();
+        assert!(args.output == Output::File(PathBuf::from("out.enc")));
+    }
+
+    #[test]
+    fn option_long_output_regular() {
+        let args = Args::build_from_args(["encrypt", "--output", "out.enc"].iter()).unwrap();
+        assert!(args.output == Output::File(PathBuf::from("out.enc")));
+    }
+
+    #[test]
+    fn option_message_default() {
+        let args = Args::build_from_args(["encrypt"].iter()).unwrap();
+        assert!(args.message.is_none());
+    }
+
+    #[test]
+    fn option_short_file_regular() {
+        let args = Args::build_from_args(["encrypt", "-f", "in.txt"].iter()).unwrap();
+        assert!(args.message == Some(Message::File(PathBuf::from("in.txt"))));
+    }
+
+    #[test]
+    fn option_long_file_regular() {
+        let args = Args::build_from_args(["encrypt", "--file", "in.txt"].iter()).unwrap();
+        assert!(args.message == Some(Message::File(PathBuf::from("in.txt"))));
     }
 
     #[test]
@@ -214,5 +364,11 @@ mod tests {
     fn option_long_version_regular() {
         let args = Args::build_from_args(["--version"].iter()).unwrap();
         assert!(args.version);
+    }
+
+    #[test]
+    fn command_unknown_is_error() {
+        let err = Args::build_from_args(["unknown"].iter()).unwrap_err();
+        assert!(err.contains("'unknown'"));
     }
 }
