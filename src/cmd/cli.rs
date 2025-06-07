@@ -215,7 +215,7 @@ impl Args {
     /// the same as all the other keys for all the other algorithms.
     fn normalize_rotn_key_to_base64(key: &str) -> Result<String, String> {
         let Ok(key) = key.parse::<u8>() else {
-            return Err("Not a valid ROT-n key".to_string());
+            return Err("Not a valid ROT-n key.\nChoose a value in the range 0 to 255".to_string());
         };
         let key = (&[key] as &[u8; 1]).base64_encode();
         Ok(key)

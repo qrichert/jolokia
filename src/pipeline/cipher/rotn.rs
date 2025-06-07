@@ -33,7 +33,7 @@ impl Cipher for RotN {
                 break;
             }
             for c in &mut buffer[..n] {
-                *c = rotate(*c, -key);
+                *c = rotate(*c, key);
             }
             writer
                 .write_all(&buffer[..n])
@@ -69,6 +69,15 @@ impl Cipher for RotN {
     }
 }
 
+/// Extract a single-byte ROT-n key.
+///
+/// Contrary to robust algorithms, this cipher only expects a one-byte
+/// key, which corresponds to the rotation amount `n`. The key must be
+/// in the range `0..=255`, and only ASCII bytes are transformed.
+///
+/// # Errors
+///
+/// Errors if the key is not exactly 1 byte long.
 fn extract_n_from_key_or_fail(key: &[u8]) -> traits::Result<i16> {
     if key.len() == 1 {
         Ok(i16::from(key[0]))
@@ -133,6 +142,21 @@ pub mod tests {
     use super::*;
 
     #[test]
+    fn rot_encrypt_with_n_is_correct() {
+        let plaintext = "attack at dawn".as_bytes();
+        // Do not use `13` here, or ROT-13 symmetry may hide bugs.
+        let encrypted = RotN::new().encrypt(&[5], plaintext).unwrap();
+        assert_eq!(&encrypted, "fyyfhp fy ifbs".as_bytes());
+    }
+
+    #[test]
+    fn rot_decrypt_with_n_is_correct() {
+        let ciphertext = "fyyfhp fy ifbs".as_bytes();
+        let decrypted = RotN::new().decrypt(&[5], ciphertext).unwrap();
+        assert_eq!(&decrypted, "attack at dawn".as_bytes());
+    }
+
+    #[test]
     fn rot_encrypt_does_not_break_multibyte_chars() {
         let plaintext = "hello ü, ñ, ü, 漢 world".as_bytes();
 
@@ -150,5 +174,53 @@ pub mod tests {
         dbg!(&decrypted);
 
         assert_eq!(&decrypted, "hello ü, ñ, ü, 漢 world".as_bytes());
+    }
+
+    #[test]
+    fn rot_empty_input_is_noop() {
+        let plaintext = "".as_bytes();
+        let encrypted = RotN::new().encrypt(&[13], plaintext).unwrap();
+        assert_eq!(&encrypted, "".as_bytes());
+    }
+
+    #[test]
+    fn rot_ignores_non_ascii_letters() {
+        let plaintext = "1234!@#$%^&*()_+-=[]{}|;:',.<>?/".as_bytes();
+        let encrypted = RotN::new().encrypt(&[7], plaintext).unwrap();
+        assert_eq!(&encrypted, plaintext); // Should remain unchanged.
+    }
+
+    #[test]
+    fn rot_preserves_mixed_case_and_nonletters() {
+        let plaintext = "Hello, World! 123".as_bytes();
+        let encrypted = RotN::new().encrypt(&[5], plaintext).unwrap();
+        assert_eq!(&encrypted, "Mjqqt, Btwqi! 123".as_bytes());
+
+        let decrypted = RotN::new().decrypt(&[5], &encrypted).unwrap();
+        assert_eq!(&decrypted, plaintext);
+    }
+
+    #[test]
+    fn rot_round_trip_with_arbitrary_n() {
+        let plaintext = "Encrypt this message properly.".as_bytes();
+        let n = 19;
+        let encrypted = RotN::new().encrypt(&[n], plaintext).unwrap();
+        let decrypted = RotN::new().decrypt(&[n], &encrypted).unwrap();
+        assert_eq!(&decrypted, plaintext);
+    }
+
+    #[test]
+    fn rot_round_trip_all_possible_keys() {
+        let plaintext = b"The quick brown fox jumps over the lazy dog!";
+
+        for key in 0u8..=255 {
+            let encrypted = RotN::new().encrypt(&[key], plaintext).unwrap();
+            let decrypted = RotN::new().decrypt(&[key], &encrypted).unwrap();
+            assert_eq!(
+                &decrypted, plaintext,
+                "Failed for key {}: round-trip mismatch",
+                key
+            );
+        }
     }
 }
