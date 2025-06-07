@@ -98,8 +98,10 @@ Please write to a separate file, and rename it afterwards.",
 fn get_key_or_default(args: &cli::Args, algorithm: cli::Algorithm) -> &str {
     if let Some(ref key) = args.key {
         key.as_str()
-    } else if matches!(algorithm, cli::Algorithm::RotN) {
+    } else if algorithm == cli::Algorithm::RotN {
         // Special ROT-n case: do not warn.
+        algorithm.default_key()
+    } else if algorithm == cli::Algorithm::Brainfuck {
         algorithm.default_key()
     } else {
         eprintln!(

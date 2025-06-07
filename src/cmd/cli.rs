@@ -20,6 +20,7 @@ pub enum Algorithm {
     #[default]
     ChaCha20Poly1305,
     RotN,
+    Brainfuck,
 }
 
 impl Algorithm {
@@ -27,7 +28,8 @@ impl Algorithm {
     pub fn default_key(self) -> &'static str {
         match self {
             Self::ChaCha20Poly1305 => "edLKPT4jYaabmMwuKzgQwklMC9HxTYmhVY7qln4yrJM",
-            Self::RotN => "DQ", // This is base64 for `13`.
+            Self::RotN => "DQ",                // This is base64 for `13`.
+            Self::Brainfuck => "QnJhaW5mdWNr", // Whatever.
         }
     }
 }
@@ -40,6 +42,7 @@ impl FromStr for Algorithm {
         match s.as_str() {
             "chacha20-poly1305" => Ok(Self::ChaCha20Poly1305),
             "rot-n" => Ok(Self::RotN),
+            "brainfuck" => Ok(Self::Brainfuck),
             _ => Err(()),
         }
     }
@@ -50,6 +53,7 @@ impl From<Algorithm> for Box<dyn Cipher> {
         match value {
             Algorithm::ChaCha20Poly1305 => Box::new(cipher::ChaCha20Poly1305),
             Algorithm::RotN => Box::new(cipher::RotN),
+            Algorithm::Brainfuck => Box::new(cipher::Brainfuck),
         }
     }
 }
@@ -146,8 +150,8 @@ impl Args {
             }
         }
 
-        // Default to `--raw` for ROT-n.
-        if args.algorithm == Some(Algorithm::RotN) {
+        // Default to `--raw` for ROT-n and Brainfuck.
+        if matches!(args.algorithm, Some(Algorithm::RotN | Algorithm::Brainfuck)) {
             args.raw = true;
         }
 
