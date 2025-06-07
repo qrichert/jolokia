@@ -32,7 +32,7 @@
 //!
 //! - Base text: 810
 //! - Naive output: 27781
-//! - Optimized ouput: 7876
+//! - Optimized ouput: 7708
 //!
 //! Text:
 //!
@@ -245,6 +245,23 @@ impl Opti {
         };
         buf.extend(chars.as_bytes());
     }
+
+    /// Remove register shifts that cancel each other.
+    fn remove_redundant_shifts(output: &[u8]) -> String {
+        let mut output = String::from_utf8_lossy(output).to_string();
+
+        output = output.replace(">>>><<<<", "");
+        output = output.replace(">>><<<", "");
+        output = output.replace(">><<", "");
+        output = output.replace("><", "");
+
+        output = output.replace("<<<<>>>>", "");
+        output = output.replace("<<<>>>", "");
+        output = output.replace("<<>>", "");
+        output = output.replace("<>", "");
+
+        output
+    }
 }
 
 pub struct Brainfuck;
@@ -311,8 +328,12 @@ impl Cipher for Brainfuck {
                 }
             }
 
+            // This won't work if the shifts cross chunks, but that's
+            // not the common case.
+            let output = Opti::remove_redundant_shifts(&output);
+
             writer
-                .write_all(output.as_slice())
+                .write_all(output.as_bytes())
                 .map_err(|e| Error::Write(e.to_string()))?;
         }
 
@@ -362,6 +383,6 @@ He paused... then smiled. "Relax. Everything’s fine."
         //panic!("{}", String::from_utf8_lossy(&encrypted).to_string());
 
         // -1 compared to stdout because no newline.
-        assert_eq!(encrypted.len(), 7876 - 1);
+        assert_eq!(encrypted.len(), 7708 - 1);
     }
 }
