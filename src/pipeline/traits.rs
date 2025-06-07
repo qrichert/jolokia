@@ -38,7 +38,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub enum GeneratedKey {
     Symmetric(Vec<u8>),
     // Asymmetric { private: Vec<u8>, public: Vec<u8> },
-    // None,
+    None,
 }
 
 pub trait Cipher {

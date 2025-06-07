@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use jolokia::cipher;
-use jolokia::traits::Cipher;
+use jolokia::traits::{Base64Encode, Cipher};
 
 pub const KEY_ENV_VAR: &str = "JOLOKIA_CIPHER_KEY";
 
@@ -19,6 +19,7 @@ pub enum Command {
 pub enum Algorithm {
     #[default]
     ChaCha20Poly1305,
+    RotN,
 }
 
 impl Algorithm {
@@ -26,6 +27,7 @@ impl Algorithm {
     pub fn default_key(self) -> &'static str {
         match self {
             Self::ChaCha20Poly1305 => "edLKPT4jYaabmMwuKzgQwklMC9HxTYmhVY7qln4yrJM",
+            Self::RotN => "DQ", // This is base64 for `13`.
         }
     }
 }
@@ -37,6 +39,7 @@ impl FromStr for Algorithm {
         let s = s.to_lowercase();
         match s.as_str() {
             "chacha20-poly1305" => Ok(Self::ChaCha20Poly1305),
+            "rot-n" => Ok(Self::RotN),
             _ => Err(()),
         }
     }
@@ -46,6 +49,7 @@ impl From<Algorithm> for Box<dyn Cipher> {
     fn from(value: Algorithm) -> Self {
         match value {
             Algorithm::ChaCha20Poly1305 => Box::new(cipher::ChaCha20Poly1305),
+            Algorithm::RotN => Box::new(cipher::RotN),
         }
     }
 }
@@ -142,6 +146,11 @@ impl Args {
             }
         }
 
+        // Default to `--raw` for ROT-n.
+        if args.algorithm == Some(Algorithm::RotN) {
+            args.raw = true;
+        }
+
         // If no key, try `env`.
         if args.key.is_none() {
             args.key = Self::maybe_get_key_from_env();
@@ -151,6 +160,12 @@ impl Args {
             // as the key.
             if let Some(key) = Self::maybe_get_key_from_file(key) {
                 args.key = Some(key);
+            }
+        }
+        // TODO: Simplify with `if let` chain.
+        if let Some(ref key) = args.key {
+            if args.algorithm == Some(Algorithm::RotN) {
+                args.key = Some(Self::normalize_rotn_key_to_base64(key)?);
             }
         }
 
@@ -187,6 +202,19 @@ impl Args {
             }
         }
         None
+    }
+
+    /// Normalize ROT-n keys to base64.
+    ///
+    /// ROT-n keys are string representations of decimal numbers
+    /// (e.g, "13"). We want to normalize them into base64 so they work
+    /// the same as all the other keys for all the other algorithms.
+    fn normalize_rotn_key_to_base64(key: &str) -> Result<String, String> {
+        let Ok(key) = key.parse::<u8>() else {
+            return Err("Not a valid ROT-n key.\nChoose a value in the range 0 to 255".to_string());
+        };
+        let key = (&[key] as &[u8; 1]).base64_encode();
+        Ok(key)
     }
 
     fn does_stdin_have_content() -> bool {

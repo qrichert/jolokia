@@ -98,6 +98,9 @@ Please write to a separate file, and rename it afterwards.",
 fn get_key_or_default(args: &cli::Args, algorithm: cli::Algorithm) -> &str {
     if let Some(ref key) = args.key {
         key.as_str()
+    } else if algorithm == cli::Algorithm::RotN {
+        // Special ROT-n case: do not warn.
+        algorithm.default_key()
     } else {
         eprintln!(
             "\
@@ -221,6 +224,7 @@ What does {package} do?
 Algorithms:
   {u}Name{rt}                 {u}Key Size{rt}
   ChaCha20-Poly1305    32-bytes (256-bits)
+  ROT-n                0..255 (insecure)
 
 Key:
   In {package}, a key is always a base64-encoded string of bytes. The
