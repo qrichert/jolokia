@@ -101,6 +101,8 @@ fn get_key_or_default(args: &cli::Args, algorithm: cli::Algorithm) -> &str {
     } else if algorithm == cli::Algorithm::RotN {
         // Special ROT-n case: do not warn.
         algorithm.default_key()
+    } else if algorithm == cli::Algorithm::Brainfuck {
+        algorithm.default_key()
     } else {
         eprintln!(
             "\
