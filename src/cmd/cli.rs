@@ -218,12 +218,18 @@ impl Args {
     }
 
     fn does_stdin_have_content() -> bool {
+        #![allow(unreachable_code)]
+        #[cfg(test)]
+        return false;
         // If the descriptor/handle refers to a terminal/tty, there is
         // nothing in stdin to be consumed.
         !io::stdin().is_terminal()
     }
 
     fn is_output_redirected() -> bool {
+        #![allow(unreachable_code)]
+        #[cfg(test)]
+        return false;
         // If the descriptor/handle refers to a terminal/tty, the output
         // is not redirected to a file.
         !io::stdout().is_terminal()
