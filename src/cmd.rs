@@ -12,6 +12,9 @@ pub fn genkey(cipher: &dyn Cipher, add_newline: bool) -> Result<(), String> {
         GeneratedKey::Symmetric(key) => {
             print!("{}", key.base64_encode());
         }
+        GeneratedKey::None => {
+            return Err("The selected algorithm does not generate keys.".to_string());
+        }
     }
     if add_newline {
         println!();
