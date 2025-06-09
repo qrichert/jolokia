@@ -3,12 +3,12 @@
 //! This generates Brainfuck code that will print whatever the input is.
 //!
 //! The code generation is somewhat optimized for size, meaning the
-//! count of Brainfuck operators is _lower_ than it would be if we only
-//! naively incremented and decremented a single register based on the
-//! delta with the previous character.
+//! count of Brainfuck instructions is _lower_ than it would be if we
+//! only naively incremented and decremented a single register based on
+//! the delta with the previous character.
 //!
 //! The code is _not_ optimized for execution speed however. We minimize
-//! the count of _operators_, not _operations_.
+//! the count of _instructions_, not _operations_.
 //!
 //! The optimized version is roughly 1/3rd the size of naive delta one
 //! (based on a little bit of testing on English text). The compression
@@ -368,9 +368,193 @@ impl Cipher for Brainfuck {
         Ok(())
     }
 
-    fn decrypt_stream(&self, _: &[u8], _: &mut dyn Read, _: &mut dyn Write) -> traits::Result<()> {
-        eprintln!("Brainfuck interpreting is not supported.");
-        std::process::exit(1);
+    /// Interpret Brainfuck code to decrypt message.
+    ///
+    /// This is idiosyncratic to our implementation of `encrypt()`, it's
+    /// not meant as a general-purpose Brainfuck interpreter. It _does_
+    /// work, and will correctly interpret most programs, but it is not
+    /// an "advertised" goal, if that makes sense.
+    ///
+    /// Notable peculiarities:
+    /// - Any attempt to shift the data pointer to an index below `0`
+    ///   will fail (non-wrapping, no undefined behaviour).
+    /// - Memory is pre-allocated for 8 bytes (`encrypt()` does not
+    ///   require more).
+    /// - Shifting the data pointer to an index of `8` and above will
+    ///   _grow_ memory indefinitely as needed. We optimize for our use
+    ///   case by not allocating more than needed, but we stay flexible
+    ///   for other use cases (especially useful in tests for us).
+    /// - Cells/registers range from `0` to `255`. Memory is essentially
+    ///   a byte array, with each cell being `1-byte`.
+    /// - Any attempt to decrement the cell below `0`, or increment the
+    ///   cell above `255`, will fail.
+    /// - Inputting data will set the cell/register value to `0`. We
+    ///   don't output `,` in `encrypt()`, and we don't run programs
+    ///   interactively; this is meant for decryption.
+    /// - Unbalanced `[`/`]` will fail at _execution_ (not compilation).
+    ///   This means programs with loop imbalances will fail but only if
+    ///   and when the loop is encountered. If execution never reaches
+    ///   that particular loop, execution will not fail.
+    ///
+    /// Note that all these constraints are within "[spec]".
+    ///
+    /// [spec]: https://www.muppetlabs.com/~breadbox/bf/standards.html
+    ///
+    /// # Errors
+    ///
+    /// Errors if decryption fails, or if read/write fails. Decryption
+    /// failures are opaque due to security concerns.
+    ///
+    /// # Implementation Details
+    ///
+    /// Somehow, C-style looks much cleaner here than idiomatic Rust.
+    /// Maybe because Brainfuck itself is all about indexes and jumps.
+    #[allow(
+        clippy::match_on_vec_items,
+        clippy::needless_range_loop,
+        clippy::redundant_else,
+        clippy::too_many_lines
+    )]
+    fn decrypt_stream(
+        &self,
+        _: &[u8],
+        reader: &mut dyn Read,
+        writer: &mut dyn Write,
+    ) -> traits::Result<()> {
+        // We have to read everything in memory because of backtracking
+        // loops `[...]`.
+        let mut program = Vec::new();
+        reader
+            .read_to_end(&mut program)
+            .map_err(|e| Error::Read(e.to_string()))?;
+
+        let mut memory = vec![0u8; 8]; // We only use 7 registers.
+        let mut ptr: usize = 0;
+        let mut instruction = 0;
+        let mut loop_stack = Vec::new();
+        let mut line = 1;
+        loop {
+            if instruction == program.len() {
+                // `loop stack` _must_ be empty at this point.
+                if let Some(opening_bracket) = loop_stack.last() {
+                    return Err(Error::Other(format!(
+                        "\
+Unbalanced loop brackets.
+Opening bracket is missing its pair: {} ([).",
+                        opening_bracket + 1
+                    )));
+                }
+
+                break;
+            }
+
+            let pos = (instruction + 1) - (line - 1);
+            match program[instruction] {
+                b'>' => {
+                    // Must grow to prevent overflow.
+                    if memory.len() == ptr {
+                        // Give a fair bit of room.
+                        memory.extend([0u8; 4096]);
+                    }
+                    ptr = ptr
+                        .checked_add(1)
+                        .expect("memory allocation will fail first");
+                }
+                b'<' => {
+                    ptr = ptr.checked_sub(1).ok_or_else(|| {
+                        Error::Other(format!(
+                            "\
+Pointer underflow.
+Attempting to shift data pointer below 0: {pos} (<).",
+                        ))
+                    })?;
+                }
+                b'+' => {
+                    // `ptr` _is_ within `memory` (checked at `>`/`<`).
+                    memory[ptr] = memory[ptr].checked_add(1).ok_or_else(|| {
+                        Error::Other(format!(
+                            "\
+Cell overflow.
+Attempting to increment cell {ptr} above 255: {pos} (+).",
+                        ))
+                    })?;
+                }
+                b'-' => {
+                    // `ptr` _is_ within `memory` (checked at `>`/`<`).
+                    memory[ptr] = memory[ptr].checked_sub(1).ok_or_else(|| {
+                        Error::Other(format!(
+                            "\
+Cell underflow.
+Attempting to decrement cell {ptr} below 0: {pos} (-).",
+                        ))
+                    })?;
+                }
+                b'.' => writer
+                    .write_all(&[memory[ptr]])
+                    .map_err(|e| Error::Write(e.to_string()))?,
+                b',' => {
+                    // We don't run interactively, so we default to `0`
+                    // as most implementations do when there's not data.
+                    memory[ptr] = 0;
+                }
+                b'[' => {
+                    if memory[ptr] == 0 {
+                        // Jump to matching `]` + 1.
+                        let mut depth = 1;
+                        let mut did_find_matching_bracket = false;
+                        for i in (instruction + 1)..program.len() {
+                            match program[i] {
+                                b'[' => depth += 1,
+                                b']' => {
+                                    depth -= 1;
+                                    if depth == 0 {
+                                        // Found the matching `]`.
+                                        did_find_matching_bracket = true;
+                                        instruction = i + 1;
+                                        break;
+                                    }
+                                }
+                                _ => (),
+                            }
+                        }
+                        if !did_find_matching_bracket {
+                            return Err(Error::Other(format!(
+                                "\
+Unbalanced loop brackets.
+Opening bracket is missing its pair: {pos} ([).",
+                            )));
+                        }
+                        continue;
+                    } else {
+                        loop_stack.push(instruction);
+                    }
+                }
+                b']' => {
+                    let Some(opening_bracket) = loop_stack.last() else {
+                        // If `loop_stack` is empty, there is a balance error.
+                        return Err(Error::Other(format!(
+                            "\
+Unbalanced loop brackets.
+Closing bracket is missing its pair: {pos} (]).",
+                        )));
+                    };
+                    if memory[ptr] != 0 {
+                        // Jump to matching `[` + 1 (continue loop).
+                        instruction = opening_bracket + 1;
+                        continue;
+                    } else {
+                        // Stop loop.
+                        loop_stack.pop().expect("there is a `last()`");
+                    }
+                }
+                b'\n' => line += 1,
+                _ => (),
+            }
+
+            instruction += 1;
+        }
+
+        Ok(())
     }
 }
 
@@ -378,9 +562,7 @@ impl Cipher for Brainfuck {
 pub mod tests {
     use super::*;
 
-    #[test]
-    fn brainfuck_encrypt_length() {
-        let plaintext = r#"The quick brown fox jumps over the lazy dog. This sentence contains
+    const TEXT: &str = r#"The quick brown fox jumps over the lazy dog. This sentence contains
 every letter of the alphabet, making it useful for testing font
 rendering and keyboard layouts.
 
@@ -400,8 +582,11 @@ help but wonder: what was going on in his head?
 He paused... then smiled. "Relax. Everything’s fine."
 
 (But it wasn’t.)
-"#
-        .as_bytes();
+"#;
+
+    #[test]
+    fn brainfuck_encrypt_length() {
+        let plaintext = TEXT.as_bytes();
 
         let encrypted = Brainfuck::new().encrypt(&[], plaintext).unwrap();
         dbg!(&encrypted);
@@ -410,5 +595,198 @@ He paused... then smiled. "Relax. Everything’s fine."
 
         // -1 compared to stdout because no newline.
         assert_eq!(encrypted.len(), 7706 - 1);
+    }
+
+    #[test]
+    fn brainfuck_round_trip() {
+        let plaintext = TEXT.as_bytes();
+
+        let encrypted = Brainfuck::new().encrypt(&[], plaintext).unwrap();
+        //dbg!(&encrypted);
+
+        let decrypted = Brainfuck::new().decrypt(&[], &encrypted).unwrap();
+        dbg!(&decrypted);
+
+        assert_eq!(plaintext, decrypted);
+    }
+
+    #[test]
+    fn brainfuck_decrypt_pointer_underflow() {
+        let ciphertext = b"<";
+
+        let error = Brainfuck::new().decrypt(&[], ciphertext).unwrap_err();
+        dbg!(&error);
+
+        assert_eq!(
+            error,
+            Error::Other(
+                "\
+Pointer underflow.
+Attempting to shift data pointer below 0: 1 (<)."
+                    .to_string()
+            )
+        );
+    }
+
+    #[test]
+    fn brainfuck_decrypt_cell_overflow() {
+        let ciphertext = b"+++++[>++++++++++<-]>+[<+++++>-]<+";
+
+        let error = Brainfuck::new().decrypt(&[], ciphertext).unwrap_err();
+        dbg!(&error);
+
+        assert_eq!(
+            error,
+            Error::Other(
+                "\
+Cell overflow.
+Attempting to increment cell 0 above 255: 34 (+)."
+                    .to_string()
+            )
+        );
+    }
+
+    #[test]
+    fn brainfuck_decrypt_cell_underflow() {
+        let ciphertext = b"-";
+
+        let error = Brainfuck::new().decrypt(&[], ciphertext).unwrap_err();
+        dbg!(&error);
+
+        assert_eq!(
+            error,
+            Error::Other(
+                "\
+Cell underflow.
+Attempting to decrement cell 0 below 0: 1 (-)."
+                    .to_string()
+            )
+        );
+    }
+
+    #[test]
+    fn brainfuck_decrypt_input_sets_cell_to_zero() {
+        // Sets cell to `5`, resets to `0`, increment to `33` (!).
+        let ciphertext = b"+++,+++++++++++++++++++++++++++++++++.";
+
+        let decrypted = Brainfuck::new().decrypt(&[], ciphertext).unwrap();
+        dbg!(&decrypted);
+
+        // If cell wasn't reset, it would print `$` (36).
+        assert_eq!(decrypted, b"!");
+    }
+
+    #[test]
+    fn brainfuck_decrypt_unbalanced_left_bracket() {
+        let ciphertext = b"[[]++";
+
+        let error = Brainfuck::new().decrypt(&[], ciphertext).unwrap_err();
+        dbg!(&error);
+
+        assert_eq!(
+            error,
+            Error::Other(
+                "\
+Unbalanced loop brackets.
+Opening bracket is missing its pair: 1 ([)."
+                    .to_string()
+            )
+        );
+    }
+
+    #[test]
+    fn brainfuck_decrypt_unbalanced_right_bracket_at_end() {
+        let ciphertext = b"+++]";
+
+        let error = Brainfuck::new().decrypt(&[], ciphertext).unwrap_err();
+        dbg!(&error);
+
+        assert_eq!(
+            error,
+            Error::Other(
+                "\
+Unbalanced loop brackets.
+Closing bracket is missing its pair: 4 (])."
+                    .to_string()
+            )
+        );
+    }
+
+    // Interpreter tests straight outta <https://brainfuck.org/tests.b>.
+
+    #[test]
+    fn brainfuck_decrypt_memory_length() {
+        // Goes to cell 30000 and reports from there with a #. (Verifies
+        // that the array is big enough.)
+        let ciphertext = b"\
+++++[>++++++<-]>[>+++++>+++++++<<-]>>++++<[[>[[>>+<<-]<]>>>-]>-[>+>+<<-]>]
++++++[>+++++++<<++>-]>.<<.
+";
+
+        let decrypted = Brainfuck::new().decrypt(&[], ciphertext).unwrap();
+        dbg!(&decrypted);
+
+        assert_eq!(decrypted, b"#\n");
+    }
+
+    #[test]
+    fn brainfuck_decrypt_obscure_problems() {
+        // Tests for several obscure problems. Should output an H.
+        let ciphertext = br#"[]++++++++++[>>+>+>++++++[<<+<+++>>>-]<<<<-]
+"A*$";?@![#>>+<<]>[>>]<<<<[>++<[-]]>.>.
+"#;
+
+        let decrypted = Brainfuck::new().decrypt(&[], ciphertext).unwrap();
+        dbg!(&decrypted);
+
+        assert_eq!(decrypted, b"H\n");
+    }
+
+    #[test]
+    fn brainfuck_decrypt_unbalanced_left_bracket_at_end() {
+        // Should ideally give error message "unmatched [" or the like,
+        // and not give any output. Not essential.
+        let ciphertext = b"+++++[>+++++++>++<<-]>.>.[";
+
+        let error = Brainfuck::new().decrypt(&[], ciphertext).unwrap_err();
+        dbg!(&error);
+
+        // Note: This _will_ give output in our implementation because
+        // we interpret the program "as it comes", there is no
+        // pre-compilation. Output will already be printed once we reach
+        // the bracket that's problematic.
+        assert_eq!(
+            error,
+            Error::Other(
+                "\
+Unbalanced loop brackets.
+Opening bracket is missing its pair: 26 ([)."
+                    .to_string()
+            )
+        );
+    }
+
+    #[test]
+    fn brainfuck_decrypt_unbalanced_right_bracket() {
+        // Should ideally give error message "unmatched ]" or the like,
+        // and not give any output. Not essential.
+        let ciphertext = b"+++++[>+++++++>++<<-]>.>.][";
+
+        let error = Brainfuck::new().decrypt(&[], ciphertext).unwrap_err();
+        dbg!(&error);
+
+        // Note: This _will_ give output in our implementation because
+        // we interpret the program "as it comes", there is no
+        // pre-compilation. Output will already be printed once we reach
+        // the bracket that's problematic.
+        assert_eq!(
+            error,
+            Error::Other(
+                "\
+Unbalanced loop brackets.
+Closing bracket is missing its pair: 26 (])."
+                    .to_string()
+            )
+        );
     }
 }

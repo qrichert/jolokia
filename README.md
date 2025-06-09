@@ -43,7 +43,7 @@ hello, world!
       two are just not yet connected).
 - [ ] Choose `--algorithm` (`JOLOKIA_ALGORITHM`).
   - [x] ChaCha20-Poly1305
-  - [ ] ROT-n (useless, but forces generic design).
+  - [x] ROT-n (useless, but forces generic design).
   - [ ] RSA
 - [ ] If multiple algorithms, should we keep `JOLOKIA_CIPHER_KEY` as
       default also support specialized:
