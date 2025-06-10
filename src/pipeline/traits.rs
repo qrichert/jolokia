@@ -33,6 +33,8 @@ You are likely using the wrong key, or the data is corrupted."
     }
 }
 
+impl std::error::Error for Error {}
+
 pub type Result<T> = std::result::Result<T, Error>;
 
 pub enum GeneratedKey {
