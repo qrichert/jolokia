@@ -1,14 +1,21 @@
 mod cmd;
 
 use std::io::{self, Read, Write};
-use std::process;
-use std::{env, fs};
+use std::path::PathBuf;
+use std::sync::OnceLock;
+use std::time::SystemTime;
+use std::{env, fs, process};
 
 use lessify::Pager;
 
 use jolokia::traits::Cipher;
 
 use cmd::{cli, ui};
+
+// TODO: This deserves refactoring. Error handling is inconsistent, and
+// `if is_in_place` logic is brittle because correctness is not enforced
+// by the compiler. But it's fine for now as long as we don't add new
+// features.
 
 fn main() {
     let args = match cli::Args::build_from_args(env::args().skip(1)) {
@@ -31,7 +38,7 @@ Try '{bin} -h' for help.",
         short_help();
     } else if args.version {
         version();
-    } else if let Some(ref command) = args.command {
+    } else if let Some(command) = args.command {
         if let Err(reason) = execute_command(command, &args) {
             eprintln!(
                 "{error}: {reason}{}",
@@ -47,61 +54,57 @@ Try '{bin} -h' for help.",
     }
 }
 
-fn execute_command(command: &cli::Command, args: &cli::Args) -> Result<(), String> {
+fn execute_command(command: cli::Command, args: &cli::Args) -> Result<(), String> {
     let algorithm = args.algorithm.unwrap_or_default();
     let cipher: Box<dyn Cipher> = algorithm.into();
     let add_newline = !matches!(args.output, cli::Output::Redirected);
 
     match command {
         cli::Command::GenKey => cmd::genkey(cipher.as_ref(), add_newline),
-        cli::Command::Encrypt => {
-            ensure_input_neq_output_or_exit(args);
+        cli::Command::Encrypt | cli::Command::Decrypt => {
+            let is_in_place = is_input_file_used_for_output(args);
+
             let key = get_key_or_default(args, algorithm);
             let message = get_message_or_exit(args);
-            let output = get_output_or_exit(args);
-            cmd::encrypt(cipher.as_ref(), key, message, output, args.raw, add_newline)
-        }
-        cli::Command::Decrypt => {
-            ensure_input_neq_output_or_exit(args);
-            let key = get_key_or_default(args, algorithm);
-            let message = get_message_or_exit(args);
-            let output = get_output_or_exit(args);
-            cmd::decrypt(cipher.as_ref(), key, message, output, args.raw)
+            let output = if is_in_place {
+                get_temporary_file_or_exit(args)
+            } else {
+                get_output_or_exit(args)
+            };
+
+            if command == cli::Command::Encrypt {
+                cmd::encrypt(cipher.as_ref(), key, message, output, args.raw, add_newline)?;
+            } else if command == cli::Command::Decrypt {
+                cmd::decrypt(cipher.as_ref(), key, message, output, args.raw)?;
+            }
+
+            if is_in_place {
+                override_output_file_with_temporary_file_or_exit(args);
+            }
+
+            Ok(())
         }
     }
 }
 
-fn ensure_input_neq_output_or_exit(args: &cli::Args) {
-    if let (Some(cli::Message::File(input_file)), cli::Output::File(output_file)) =
+fn is_input_file_used_for_output(args: &cli::Args) -> bool {
+    let (Some(cli::Message::File(input_file)), cli::Output::File(output_file)) =
         (&args.message, &args.output)
-    {
-        let Ok(input_file) = input_file.canonicalize() else {
-            return;
-        };
-        let Ok(output_file) = output_file.canonicalize() else {
-            return;
-        };
-
-        if input_file == output_file {
-            eprintln!(
-                "\
-{fatal}: Cannot read/write from/to the same file.
-Writing to a file truncates it; there's nothing left to read then.
-Please write to a separate file, and rename it afterwards.",
-                fatal = ui::Color::error("fatal"),
-            );
-            process::exit(2);
-        }
-    }
+    else {
+        return false;
+    };
+    let (Ok(input_file), Ok(output_file)) = (input_file.canonicalize(), output_file.canonicalize())
+    else {
+        return false;
+    };
+    input_file == output_file
 }
 
 fn get_key_or_default(args: &cli::Args, algorithm: cli::Algorithm) -> &str {
     if let Some(ref key) = args.key {
         key.as_str()
-    } else if algorithm == cli::Algorithm::RotN {
-        // Special ROT-n case: do not warn.
-        algorithm.default_key()
-    } else if algorithm == cli::Algorithm::Brainfuck {
+    } else if algorithm == cli::Algorithm::RotN || algorithm == cli::Algorithm::Brainfuck {
+        // Special do-not-warn cases.
         algorithm.default_key()
     } else {
         eprintln!(
@@ -112,8 +115,7 @@ fn get_key_or_default(args: &cli::Args, algorithm: cli::Algorithm) -> &str {
 
 Anyone using {package} will be able to decrypt your messages. To generate
 a unique cipher key, run `{bin} genkey`, and use it on the command line
-with `--key`, or set the `{key_env_var}` environment variable.
-",
+with `--key`, or set the `{key_env_var}` environment variable.",
             warning = ui::Color::warning("warning"),
             package = env!("CARGO_PKG_NAME"),
             bin = env!("CARGO_BIN_NAME"),
@@ -174,6 +176,69 @@ fn get_output_or_exit(args: &cli::Args) -> Box<dyn Write> {
         }
         cli::Output::Stdout | cli::Output::Redirected => Box::new(io::stdout()),
     }
+}
+
+fn get_temporary_file_or_exit(args: &cli::Args) -> Box<dyn Write> {
+    debug_assert!(
+        is_input_file_used_for_output(args),
+        "Should only get called if in-place ciphering."
+    );
+    let tmp_file = build_temporary_file_path(args);
+    let f = match fs::File::create(&tmp_file) {
+        Ok(f) => f,
+        Err(reason) => {
+            eprintln!(
+                "{error}: Could not open file for writing '{}': {reason}.",
+                tmp_file.display(),
+                error = ui::Color::error("error")
+            );
+            process::exit(1);
+        }
+    };
+    let writer = io::BufWriter::new(f);
+    Box::new(writer)
+}
+
+fn override_output_file_with_temporary_file_or_exit(args: &cli::Args) {
+    debug_assert!(
+        is_input_file_used_for_output(args),
+        "Should only get called if in-place ciphering."
+    );
+    let cli::Output::File(ref file) = args.output else {
+        unreachable!("if in-place, it's necessarily a file");
+    };
+    let tmp_file = build_temporary_file_path(args);
+    if let Err(reason) = std::fs::rename(tmp_file, file) {
+        eprintln!(
+            "{error}: Could not override '{}': {reason}.",
+            file.display(),
+            error = ui::Color::error("error")
+        );
+        process::exit(1);
+    }
+}
+
+// TODO: Not good that we need to call this twice, refactoring would do
+// some good. This whole in-place thing doesn't "fit in" with the
+// current design, it's too crafty.
+fn build_temporary_file_path(args: &cli::Args) -> PathBuf {
+    // File name can't change from create to rename.
+    static EXTENSION: OnceLock<String> = OnceLock::new();
+
+    let cli::Output::File(ref file) = args.output else {
+        unreachable!("if in-place, it's necessarily a file");
+    };
+
+    file.with_extension(EXTENSION.get_or_init(|| {
+        let mut extension = env!("CARGO_CRATE_NAME").to_string();
+        if let Ok(timestamp) = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .map(|t| t.as_micros())
+        {
+            extension = format!("{timestamp}.{extension}");
+        }
+        extension
+    }))
 }
 
 fn short_help() {

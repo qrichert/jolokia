@@ -8,7 +8,7 @@ use jolokia::traits::{Base64Encode, Cipher};
 
 pub const KEY_ENV_VAR: &str = "JOLOKIA_CIPHER_KEY";
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Command {
     GenKey,
     Encrypt,

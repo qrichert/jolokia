@@ -35,13 +35,12 @@ hello, world!
   - [x] From CLI argument.
   - [x] From `stdin`.
   - [x] From file (show example with `tar`).
-  - [ ] From directory (`-R`, `--recursive`).
 - [ ] Complete `--help`.
 - [x] `-r`/`--raw` (if you don't want base64 output/input).
-- [ ] Encrypt in-place
+- [x] Encrypt in-place
 - [x] Streaming cipher (everything is ready for it, CLI and algos, the
       two are just not yet connected).
-- [ ] Choose `--algorithm` (`JOLOKIA_ALGORITHM`).
+- [x] Choose `--algorithm` (`JOLOKIA_ALGORITHM`).
   - [x] ChaCha20-Poly1305
   - [x] ROT-n (useless, but forces generic design).
   - [ ] RSA
@@ -50,7 +49,7 @@ hello, world!
       `JOLOKIA_CIPHER_KEY_CHACHA20POLY1305`?). If so, rename
       `JOLOKIA_CIPHER_KEY` to just `JOLOKIA_KEY`.
 - [ ] Zeroize secrets.
-- [ ] Support in-place ciphering (with a temporary intermediate file).
+- [ ] Add tests. The ciphers are well tested, but the CLI needs more.
 
 ## Installation
 
