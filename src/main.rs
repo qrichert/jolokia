@@ -353,7 +353,7 @@ Message:
   You can also encrypt or decrypt a file in-place:
 
       {h}${rt} {bin} encrypt -f cat.gif --in-place
-      {h}${rt} {bin} decrypt -f cat.gif --in-place
+      {h}${rt} {bin} decrypt -f cat.gif -i
 
 Raw I/O:
   If you do not want base64 encoding, you can pass the `--raw` or `-r`
@@ -363,6 +363,10 @@ Raw I/O:
       {h}${rt} {bin} encrypt --raw \"hello, world\" > hello.enc
       {h}${rt} cat hello.enc | {bin} decrypt --raw
       hello, world
+
+  Base64 is the simplest and safest option for most users. It makes it
+  easy to copy-paste and share ciphertext. Use `--raw` only if you know
+  what you're doing.
 
 Compression:
   BYOC. {package} does not provide built-in compression, but you can
