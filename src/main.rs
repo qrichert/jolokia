@@ -293,8 +293,8 @@ What does {package} do?
 
 Algorithms:
   {u}Name{rt}                 {u}Key Size{rt}
-  ChaCha20-Poly1305    32-bytes (256-bits)
-  ROT-n                0..255 (insecure)
+  ChaCha20-Poly1305    32-bytes (256-bits)    Modern and secure
+  ROT-n                0..255                 Insecure, educational
 
 Key:
   In {package}, a key is always a base64-encoded string of bytes. The
@@ -326,7 +326,7 @@ Key:
   environment variable to a file:
 
       {h}${rt} echo hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w > ~/.{bin}.key
-      {h}${rt} echo '{key_env_var}=\"$HOME/.{bin}.key\"' >> ~/.bashrc
+      {h}${rt} echo 'export {key_env_var}=\"$HOME/.{bin}.key\"' >> ~/.bashrc
 
 Message:
   The message can be passed on the command line:
