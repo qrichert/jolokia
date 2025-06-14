@@ -38,11 +38,13 @@ impl FromStr for Algorithm {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let s = s.to_lowercase();
+        let s = s.trim().to_lowercase().replace('-', "");
         match s.as_str() {
-            "chacha20-poly1305" => Ok(Self::ChaCha20Poly1305),
-            "rot-n" => Ok(Self::RotN),
-            "brainfuck" => Ok(Self::Brainfuck),
+            "chacha20poly1305" | "chacha20" | "chacha" | "cha20" | "cha" => {
+                Ok(Self::ChaCha20Poly1305)
+            }
+            "rotn" | "rot" => Ok(Self::RotN),
+            "brainfuck" | "bf" => Ok(Self::Brainfuck),
             _ => Err(()),
         }
     }
