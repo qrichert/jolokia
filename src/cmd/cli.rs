@@ -100,13 +100,17 @@ impl Args {
             let some_command = args.command.is_some();
             let some_algorithm = args.algorithm.is_some();
             let some_key = args.key.is_some();
-            let some_output = matches!(args.output, Output::File(_));
             let some_message = args.message.is_some();
+            let some_output = matches!(args.output, Output::File(_));
 
             let is_genkey = args
                 .command
                 .as_ref()
                 .is_some_and(|c| matches!(c, Command::GenKey));
+            let message_file = match args.message.as_ref() {
+                Some(Message::File(f)) => Some(f),
+                _ => None,
+            };
 
             match arg.as_ref() {
                 "-h" => args.short_help = true,
@@ -142,6 +146,10 @@ impl Args {
                         return Err(format!("Expected file name after '{}'", arg.as_ref()));
                     };
                     args.message = Some(Message::File(PathBuf::from(file.as_ref())));
+                }
+                "-i" | "--in-place" if message_file.is_some() && !some_output => {
+                    let message_file = message_file.expect("it is `Some`");
+                    args.output = Output::File(message_file.to_owned());
                 }
                 message if some_command && !is_genkey && !some_message => {
                     args.message = Some(Message::String(message.to_string()));

@@ -266,6 +266,7 @@ Args:
   -k, --key <KEY>        Cipher key (base64)
   -r, --raw              Handle message as raw binary
   -f, --file <FILE>      Read message from file
+    -i, --in-place       Write output to input file
   -o, --output <FILE>    Write output to file
 
 Options:
@@ -345,6 +346,11 @@ Message:
       {h}${rt} {bin} encrypt \"hello, world\" -o encrypted.txt
       {h}${rt} {bin} decrypt -f encrypted.txt
       hello, world
+
+  You can also encrypt or decrypt a file in-place:
+
+      {h}${rt} {bin} encrypt -f cat.gif --in-place
+      {h}${rt} {bin} decrypt -f cat.gif --in-place
 
 Raw I/O:
   If you do not want base64 encoding, you can pass the `--raw` or `-r`
