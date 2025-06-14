@@ -6,7 +6,7 @@
 [![crates.io](https://img.shields.io/crates/d/jolokia?logo=rust&logoColor=white&color=orange)](https://crates.io/crates/jolokia)
 [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/qrichert/jolokia/ci.yml?label=tests)](https://github.com/qrichert/jolokia/actions)
 
-_Strong encryption, made simple._
+_Simple, strong encryption._
 
 ## Examples
 

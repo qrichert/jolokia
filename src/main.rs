@@ -269,9 +269,8 @@ Args:
   -o, --output <FILE>    Write output to file
 
 Options:
-  -h, --help             Show this message and exit
+  -h, --help             Show help message and exit
   -V, --version          Show the version and exit
-  -v, --verbose          Show files being copied
 ",
         description = env!("CARGO_PKG_DESCRIPTION"),
         bin = env!("CARGO_BIN_NAME"),
