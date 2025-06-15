@@ -197,20 +197,8 @@ file size possible.
 
 ## Roadmap
 
-- [x] `genkey`
-- [x] `encrypt`/`decrypt`
-  - [x] From CLI argument.
-  - [x] From `stdin`.
-  - [x] From file (show example with `tar`).
 - [ ] Complete `--help`.
-- [x] `-r`/`--raw` (if you don't want base64 output/input).
-- [x] Encrypt in-place
-- [x] Streaming cipher (everything is ready for it, CLI and algos, the
-      two are just not yet connected).
-- [x] Choose `--algorithm` (`JOLOKIA_ALGORITHM`).
-  - [x] ChaCha20-Poly1305
-  - [x] ROT-n (useless, but forces generic design).
-  - [ ] RSA
+- [ ] HPKE
 - [ ] If multiple algorithms, should we keep `JOLOKIA_CIPHER_KEY` as
       default also support specialized:
       `JOLOKIA_CIPHER_KEY_CHACHA20POLY1305`?). If so, rename

@@ -8,7 +8,7 @@ use std::{env, fs, process};
 
 use lessify::Pager;
 
-use jolokia::traits::Cipher;
+use jolokia::traits::{Cipher, GeneratedKey};
 
 use cmd::{cli, ui};
 
@@ -64,6 +64,7 @@ fn execute_command(command: cli::Command, args: &cli::Args) -> Result<(), String
         cli::Command::Encrypt | cli::Command::Decrypt => {
             let is_in_place = is_input_file_used_for_output(args);
 
+            let cipher = cipher.as_ref();
             let key = get_key_or_default(args, algorithm);
             let message = get_message_or_exit(args);
             let output = if is_in_place {
@@ -73,9 +74,9 @@ fn execute_command(command: cli::Command, args: &cli::Args) -> Result<(), String
             };
 
             if command == cli::Command::Encrypt {
-                cmd::encrypt(cipher.as_ref(), key, message, output, args.raw, add_newline)?;
+                cmd::encrypt(cipher, &key, message, output, args.raw, add_newline)?;
             } else if command == cli::Command::Decrypt {
-                cmd::decrypt(cipher.as_ref(), key, message, output, args.raw)?;
+                cmd::decrypt(cipher, &key, message, output, args.raw)?;
             }
 
             if is_in_place {
@@ -100,12 +101,12 @@ fn is_input_file_used_for_output(args: &cli::Args) -> bool {
     input_file == output_file
 }
 
-fn get_key_or_default(args: &cli::Args, algorithm: cli::Algorithm) -> &str {
+fn get_key_or_default(args: &cli::Args, algorithm: cli::Algorithm) -> Vec<u8> {
     if let Some(ref key) = args.key {
-        key.as_str()
+        key.as_bytes().to_owned()
     } else if algorithm == cli::Algorithm::RotN || algorithm == cli::Algorithm::Brainfuck {
         // Special do-not-warn cases.
-        algorithm.default_key()
+        algorithm.default_key().get_symmetric().to_owned()
     } else {
         eprintln!(
             "\
@@ -123,7 +124,18 @@ with `--key`, or set the `{key_env_var}` environment variable.",
             b = ui::Color::maybe_color(ui::color::BOLD),
             rt = ui::Color::maybe_color(ui::color::RESET),
         );
-        algorithm.default_key()
+
+        let key = algorithm.default_key();
+        match key {
+            GeneratedKey::Symmetric(_) => key.get_symmetric(),
+            GeneratedKey::Asymmetric { .. } => match args.command {
+                Some(cli::Command::Encrypt) => key.get_asymmetric_public(),
+                Some(cli::Command::Decrypt) => key.get_asymmetric_private(),
+                _ => unreachable!(),
+            },
+            GeneratedKey::None => unreachable!(),
+        }
+        .to_owned()
     }
 }
 
@@ -296,9 +308,9 @@ What does {package} do?
   lose your key, or if there's a bug, {b}YOUR DATA WILL NOT BE RECOVERABLE{rt}.
 
 Algorithms:
-  {u}Name{rt}                 {u}Key Size{rt}
-  ChaCha20-Poly1305    32-bytes (256-bits)
-  ROT-n                0..255 (insecure)
+  {u}Name{rt}                 {u}Key Size{rt}               {u}Type{rt}
+  ChaCha20-Poly1305    32-bytes (256-bits)    Symmetric
+  ROT-n                0..255 (insecure)      Symmetric
 
 Key:
   In {package}, a key is always a base64-encoded string of bytes. The
