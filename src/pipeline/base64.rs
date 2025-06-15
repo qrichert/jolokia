@@ -37,7 +37,7 @@ impl Base64Encode for Vec<u8> {
     }
 }
 
-impl Base64Decode for &str {
+impl Base64Decode for &[u8] {
     fn base64_decode(&self) -> traits::Result<Vec<u8>> {
         let mut reader = io::Cursor::new(self);
         let mut decoded = Vec::new();
@@ -48,9 +48,15 @@ impl Base64Decode for &str {
     }
 }
 
+impl Base64Decode for &str {
+    fn base64_decode(&self) -> traits::Result<Vec<u8>> {
+        self.as_bytes().base64_decode()
+    }
+}
+
 impl Base64Decode for String {
     fn base64_decode(&self) -> traits::Result<Vec<u8>> {
-        self.as_str().base64_decode()
+        self.as_bytes().base64_decode()
     }
 }
 

@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use jolokia::cipher;
-use jolokia::traits::{Base64Encode, Cipher};
+use jolokia::traits::{Base64Encode, Cipher, GeneratedKey};
 
 pub const KEY_ENV_VAR: &str = "JOLOKIA_CIPHER_KEY";
 
@@ -25,11 +25,13 @@ pub enum Algorithm {
 
 impl Algorithm {
     /// Generic cipher key used by jolokia (this is _not secure_!).
-    pub fn default_key(self) -> &'static str {
+    pub fn default_key(self) -> GeneratedKey {
         match self {
-            Self::ChaCha20Poly1305 => "edLKPT4jYaabmMwuKzgQwklMC9HxTYmhVY7qln4yrJM",
-            Self::RotN => "DQ",                // This is base64 for `13`.
-            Self::Brainfuck => "QnJhaW5mdWNr", // Whatever.
+            Self::ChaCha20Poly1305 => {
+                GeneratedKey::Symmetric(b"edLKPT4jYaabmMwuKzgQwklMC9HxTYmhVY7qln4yrJM".to_vec())
+            }
+            Self::RotN => GeneratedKey::Symmetric(b"DQ".to_vec()), // This is base64 for `13`.
+            Self::Brainfuck => GeneratedKey::Symmetric(b"QnJhaW5mdWNr".to_vec()), // Whatever.
         }
     }
 }

@@ -40,8 +40,43 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 pub enum GeneratedKey {
     Symmetric(Vec<u8>),
-    // Asymmetric { private: Vec<u8>, public: Vec<u8> },
+    Asymmetric { private: Vec<u8>, public: Vec<u8> },
     None,
+}
+
+impl GeneratedKey {
+    // TODO: docstring
+    /// # Panics
+    /// ...
+    #[must_use]
+    pub fn get_symmetric(&self) -> &Vec<u8> {
+        match self {
+            Self::Symmetric(key) => key,
+            _ => panic!("Key is not symmetric."),
+        }
+    }
+
+    // TODO: docstring
+    /// # Panics
+    /// ...
+    #[must_use]
+    pub fn get_asymmetric_private(&self) -> &Vec<u8> {
+        match self {
+            Self::Asymmetric { private, .. } => private,
+            _ => panic!("Key is not asymmetric."),
+        }
+    }
+
+    // TODO: docstring
+    /// # Panics
+    /// ...
+    #[must_use]
+    pub fn get_asymmetric_public(&self) -> &Vec<u8> {
+        match self {
+            Self::Asymmetric { public, .. } => public,
+            _ => panic!("Key is not asymmetric."),
+        }
+    }
 }
 
 pub trait Cipher {

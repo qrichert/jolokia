@@ -8,7 +8,7 @@ use std::{env, fs, process};
 
 use lessify::Pager;
 
-use jolokia::traits::Cipher;
+use jolokia::traits::{Cipher, GeneratedKey};
 
 use cmd::{cli, ui};
 
@@ -64,6 +64,7 @@ fn execute_command(command: cli::Command, args: &cli::Args) -> Result<(), String
         cli::Command::Encrypt | cli::Command::Decrypt => {
             let is_in_place = is_input_file_used_for_output(args);
 
+            let cipher = cipher.as_ref();
             let key = get_key_or_default(args, algorithm);
             let message = get_message_or_exit(args);
             let output = if is_in_place {
@@ -73,9 +74,9 @@ fn execute_command(command: cli::Command, args: &cli::Args) -> Result<(), String
             };
 
             if command == cli::Command::Encrypt {
-                cmd::encrypt(cipher.as_ref(), key, message, output, args.raw, add_newline)?;
+                cmd::encrypt(cipher, &key, message, output, args.raw, add_newline)?;
             } else if command == cli::Command::Decrypt {
-                cmd::decrypt(cipher.as_ref(), key, message, output, args.raw)?;
+                cmd::decrypt(cipher, &key, message, output, args.raw)?;
             }
 
             if is_in_place {
@@ -100,12 +101,12 @@ fn is_input_file_used_for_output(args: &cli::Args) -> bool {
     input_file == output_file
 }
 
-fn get_key_or_default(args: &cli::Args, algorithm: cli::Algorithm) -> &str {
+fn get_key_or_default(args: &cli::Args, algorithm: cli::Algorithm) -> Vec<u8> {
     if let Some(ref key) = args.key {
-        key.as_str()
+        key.as_bytes().to_owned()
     } else if algorithm == cli::Algorithm::RotN || algorithm == cli::Algorithm::Brainfuck {
         // Special do-not-warn cases.
-        algorithm.default_key()
+        algorithm.default_key().get_symmetric().to_owned()
     } else {
         eprintln!(
             "\
@@ -123,7 +124,18 @@ with `--key`, or set the `{key_env_var}` environment variable.",
             b = ui::Color::maybe_color(ui::color::BOLD),
             rt = ui::Color::maybe_color(ui::color::RESET),
         );
-        algorithm.default_key()
+
+        let key = algorithm.default_key();
+        match key {
+            GeneratedKey::Symmetric(_) => key.get_symmetric(),
+            GeneratedKey::Asymmetric { .. } => match args.command {
+                Some(cli::Command::Encrypt) => key.get_asymmetric_public(),
+                Some(cli::Command::Decrypt) => key.get_asymmetric_private(),
+                _ => unreachable!(),
+            },
+            GeneratedKey::None => unreachable!(),
+        }
+        .to_owned()
     }
 }
 
@@ -289,9 +301,9 @@ What does {package} do?
   need a key
 
 Algorithms:
-  {u}Name{rt}                 {u}Key Size{rt}
-  ChaCha20-Poly1305    32-bytes (256-bits)
-  ROT-n                0..255 (insecure)
+  {u}Name{rt}                 {u}Key Size{rt}               {u}Type{rt}
+  ChaCha20-Poly1305    32-bytes (256-bits)    Symmetric
+  ROT-n                0..255 (insecure)      Symmetric
 
 Key:
   In {package}, a key is always a base64-encoded string of bytes. The
@@ -323,7 +335,7 @@ Key:
   environment variable to a file:
 
       {h}${rt} echo hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w > ~/.{bin}.key
-      {h}${rt} echo '{key_env_var}=\"$HOME/.{bin}.key\"' >> ~/.bashrc
+      {h}${rt} echo 'export {key_env_var}=\"$HOME/.{bin}.key\"' >> ~/.bashrc
 
 Message:
   The message can be passed on the command line:
@@ -350,7 +362,7 @@ Message:
   You can also encrypt or decrypt a file in-place:
 
       {h}${rt} {bin} encrypt -f cat.gif --in-place
-      {h}${rt} {bin} decrypt -f cat.gif --in-place
+      {h}${rt} {bin} decrypt -f cat.gif -i
 
 Raw I/O:
   If you do not want base64 encoding, you can pass the `--raw` or `-r`
@@ -360,6 +372,10 @@ Raw I/O:
       {h}${rt} {bin} encrypt --raw \"hello, world\" > hello.enc
       {h}${rt} cat hello.enc | {bin} decrypt --raw
       hello, world
+
+  Base64 is the simplest and safest option for most users. It makes it
+  easy to copy-paste and share ciphertext. Use `--raw` only if you know
+  what you're doing.
 
 Compression:
   BYOC. {package} does not provide built-in compression, but you can

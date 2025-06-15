@@ -12,6 +12,12 @@ pub fn genkey(cipher: &dyn Cipher, add_newline: bool) -> Result<(), String> {
         GeneratedKey::Symmetric(key) => {
             print!("{}", key.base64_encode());
         }
+        GeneratedKey::Asymmetric { private, public } => {
+            eprintln!("Private:");
+            println!("{}", private.base64_encode());
+            eprintln!("Public:");
+            print!("{}", public.base64_encode());
+        }
         GeneratedKey::None => {
             return Err("The selected algorithm does not generate keys.".to_string());
         }
@@ -24,7 +30,7 @@ pub fn genkey(cipher: &dyn Cipher, add_newline: bool) -> Result<(), String> {
 
 pub fn encrypt<R: Read, W: Write>(
     cipher: &dyn Cipher,
-    key: &str,
+    key: &[u8],
     mut plaintext: R,
     mut output: W,
     from_raw_bytes: bool,
@@ -55,7 +61,7 @@ pub fn encrypt<R: Read, W: Write>(
 
 pub fn decrypt<R: Read, W: Write>(
     cipher: &dyn Cipher,
-    key: &str,
+    key: &[u8],
     mut ciphertext: R,
     mut output: W,
     to_raw_bytes: bool,
@@ -75,7 +81,7 @@ pub fn decrypt<R: Read, W: Write>(
     Ok(())
 }
 
-fn decode_base64_key(key: &str) -> Result<Vec<u8>, String> {
+fn decode_base64_key(key: &[u8]) -> Result<Vec<u8>, String> {
     match key.base64_decode() {
         Ok(key) => Ok(key),
         Err(reason) => Err(reason.to_string()),
