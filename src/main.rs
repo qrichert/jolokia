@@ -310,6 +310,7 @@ What does {package} do?
 Algorithms:
   {u}Name{rt}                 {u}Key Size{rt}               {u}Type{rt}
   ChaCha20-Poly1305    32-bytes (256-bits)    Symmetric
+  HPKE                 32-bytes (256-bits)    Asymmetric
   ROT-n                0..255 (insecure)      Symmetric
 
 Key:

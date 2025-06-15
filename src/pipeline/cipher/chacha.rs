@@ -233,6 +233,8 @@ pub mod tests {
         assert!(plaintext.len() < 4096, "{} >= 4096", plaintext.len());
 
         let mut encrypted = Vec::new();
+        // TODO: We don't need the `new()`s here.
+        // `ChaCha20Poly1305.encrypt_stream()` works.
         ChaCha20Poly1305::new()
             .encrypt_stream(&key, &mut Cursor::new(plaintext), &mut encrypted)
             .unwrap();

@@ -19,6 +19,7 @@ pub enum Command {
 pub enum Algorithm {
     #[default]
     ChaCha20Poly1305,
+    Hpke,
     RotN,
     Brainfuck,
 }
@@ -30,6 +31,10 @@ impl Algorithm {
             Self::ChaCha20Poly1305 => {
                 GeneratedKey::Symmetric(b"edLKPT4jYaabmMwuKzgQwklMC9HxTYmhVY7qln4yrJM".to_vec())
             }
+            Self::Hpke => GeneratedKey::Asymmetric {
+                private: b"cMDcZQWSnd6AQh8lZrSvDqMRr5oAA4ooGrEsrxExQAM".to_vec(),
+                public: b"eRR5BeA731Ug5In5EELCpc8wqIUbUSHfP9vyjG1FVAU".to_vec(),
+            },
             Self::RotN => GeneratedKey::Symmetric(b"DQ".to_vec()), // This is base64 for `13`.
             Self::Brainfuck => GeneratedKey::Symmetric(b"QnJhaW5mdWNr".to_vec()), // Whatever.
         }
@@ -45,6 +50,7 @@ impl FromStr for Algorithm {
             "chacha20poly1305" | "chacha20" | "chacha" | "cha20" | "cha" => {
                 Ok(Self::ChaCha20Poly1305)
             }
+            "hpke" => Ok(Self::Hpke),
             "rotn" | "rot" => Ok(Self::RotN),
             "brainfuck" | "bf" => Ok(Self::Brainfuck),
             _ => Err(()),
@@ -56,6 +62,7 @@ impl From<Algorithm> for Box<dyn Cipher> {
     fn from(value: Algorithm) -> Self {
         match value {
             Algorithm::ChaCha20Poly1305 => Box::new(cipher::ChaCha20Poly1305),
+            Algorithm::Hpke => Box::new(cipher::Hpke),
             Algorithm::RotN => Box::new(cipher::RotN),
             Algorithm::Brainfuck => Box::new(cipher::Brainfuck),
         }

@@ -26,5 +26,9 @@ aead = { version = "0.5.2", features = ["stream"] }
 base64 = "0.22.1"
 # ChaCha20-Poly1305 algorithm implementation.
 chacha20poly1305 = "0.10.1"
+# HPKE scheme implementation.
+hpke = "0.13.0"
 # Output text through a pager.
 lessify = "0.4.0"
+# Generate pseudo-random numbers.
+rand = "0.9.1"

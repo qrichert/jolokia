@@ -72,10 +72,11 @@ general public.
 
 ### Algorithms
 
-| Name              | Key Size            |
-| ----------------- | ------------------- |
-| ChaCha20-Poly1305 | 32-bytes (256-bits) |
-| ROT-n             | 0..255 (insecure)   |
+| Name              | Key Size            | Type       |
+| ----------------- | ------------------- | ---------- |
+| ChaCha20-Poly1305 | 32-bytes (256-bits) | Symmetric  |
+| HPKE              | 32-bytes (256-bits) | Asymmetric |
+| ROT-n             | 0..255 (insecure)   | Symmetric  |
 
 ### Key
 
@@ -198,7 +199,7 @@ file size possible.
 ## Roadmap
 
 - [ ] Complete `--help`.
-- [ ] HPKE
+- [x] HPKE
 - [ ] If multiple algorithms, should we keep `JOLOKIA_CIPHER_KEY` as
       default also support specialized:
       `JOLOKIA_CIPHER_KEY_CHACHA20POLY1305`?). If so, rename
