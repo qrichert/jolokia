@@ -31,7 +31,7 @@ hello, world!
 ## Roadmap
 
 - [ ] Complete `--help`.
-- [ ] HPKE
+- [x] HPKE
 - [ ] If multiple algorithms, should we keep `JOLOKIA_CIPHER_KEY` as
       default also support specialized:
       `JOLOKIA_CIPHER_KEY_CHACHA20POLY1305`?). If so, rename

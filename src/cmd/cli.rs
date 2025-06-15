@@ -19,6 +19,7 @@ pub enum Command {
 pub enum Algorithm {
     #[default]
     ChaCha20Poly1305,
+    Hpke,
     RotN,
     Brainfuck,
 }
@@ -30,6 +31,7 @@ impl Algorithm {
             Self::ChaCha20Poly1305 => {
                 GeneratedKey::Symmetric(b"edLKPT4jYaabmMwuKzgQwklMC9HxTYmhVY7qln4yrJM".to_vec())
             }
+            Self::Hpke => todo!(),
             Self::RotN => GeneratedKey::Symmetric(b"DQ".to_vec()), // This is base64 for `13`.
             Self::Brainfuck => GeneratedKey::Symmetric(b"QnJhaW5mdWNr".to_vec()), // Whatever.
         }
@@ -56,6 +58,7 @@ impl From<Algorithm> for Box<dyn Cipher> {
     fn from(value: Algorithm) -> Self {
         match value {
             Algorithm::ChaCha20Poly1305 => Box::new(cipher::ChaCha20Poly1305),
+            Algorithm::Hpke => todo!(),
             Algorithm::RotN => Box::new(cipher::RotN),
             Algorithm::Brainfuck => Box::new(cipher::Brainfuck),
         }
