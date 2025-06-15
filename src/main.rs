@@ -284,9 +284,16 @@ fn long_help() {
         "\
 {help}
 What does {package} do?
-  TODO: Lorem ipsum {bin}.
-  symmetric encryption (explain),
-  need a key
+  {package} provides strong, modern, hard-to-misuse encryption for the
+  general public.
+
+  {warning}: {package} has not been audited for security. It is based on
+  audited dependencies for the underlying algorithm implementations, but
+  the final package (what you're using) was not.
+
+  {caution}: Do not encrypt data you can't afford to lose. Be especially
+  cautious of in-place encryption; always make a backup first. If you
+  lose your key, or if there's a bug, {b}YOUR DATA WILL NOT BE RECOVERABLE{rt}.
 
 Algorithms:
   {u}Name{rt}                 {u}Key Size{rt}
@@ -323,7 +330,7 @@ Key:
   environment variable to a file:
 
       {h}${rt} echo hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w > ~/.{bin}.key
-      {h}${rt} echo '{key_env_var}=\"$HOME/.{bin}.key\"' >> ~/.bashrc
+      {h}${rt} echo 'export {key_env_var}=\"$HOME/.{bin}.key\"' >> ~/.bashrc
 
 Message:
   The message can be passed on the command line:
@@ -350,7 +357,7 @@ Message:
   You can also encrypt or decrypt a file in-place:
 
       {h}${rt} {bin} encrypt -f cat.gif --in-place
-      {h}${rt} {bin} decrypt -f cat.gif --in-place
+      {h}${rt} {bin} decrypt -f cat.gif -i
 
 Raw I/O:
   If you do not want base64 encoding, you can pass the `--raw` or `-r`
@@ -360,6 +367,10 @@ Raw I/O:
       {h}${rt} {bin} encrypt --raw \"hello, world\" > hello.enc
       {h}${rt} cat hello.enc | {bin} decrypt --raw
       hello, world
+
+  Base64 is the simplest and safest option for most users. It makes it
+  easy to copy-paste and share ciphertext. Use `--raw` only if you know
+  what you're doing.
 
 Compression:
   BYOC. {package} does not provide built-in compression, but you can
@@ -381,7 +392,10 @@ Compression:
         bin = env!("CARGO_BIN_NAME"),
         package = env!("CARGO_PKG_NAME"),
         key_env_var = cli::KEY_ENV_VAR,
+        warning = ui::Color::warning("warning"),
+        caution = ui::Color::error("caution"),
         h = ui::Color::maybe_color(ui::color::HIGHLIGHT),
+        b = ui::Color::maybe_color(ui::color::BOLD),
         u = ui::Color::maybe_color(ui::color::UNDERLINE),
         rt = ui::Color::maybe_color(ui::color::RESET),
     ));
