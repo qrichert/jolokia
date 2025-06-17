@@ -80,10 +80,6 @@ impl GeneratedKey {
 }
 
 pub trait Cipher {
-    fn new() -> Self
-    where
-        Self: Sized;
-
     /// Generate cipher Key.
     #[must_use]
     fn generate_key(&self) -> GeneratedKey;

@@ -293,13 +293,6 @@ impl Opti {
 pub struct Brainfuck;
 
 impl Cipher for Brainfuck {
-    fn new() -> Self
-    where
-        Self: Sized,
-    {
-        Self
-    }
-
     fn generate_key(&self) -> GeneratedKey {
         GeneratedKey::None
     }
@@ -588,7 +581,7 @@ He paused... then smiled. "Relax. Everything’s fine."
     fn brainfuck_encrypt_length() {
         let plaintext = TEXT.as_bytes();
 
-        let encrypted = Brainfuck::new().encrypt(&[], plaintext).unwrap();
+        let encrypted = Brainfuck.encrypt(&[], plaintext).unwrap();
         dbg!(&encrypted);
 
         //panic!("{}", String::from_utf8_lossy(&encrypted).to_string());
@@ -601,10 +594,10 @@ He paused... then smiled. "Relax. Everything’s fine."
     fn brainfuck_round_trip() {
         let plaintext = TEXT.as_bytes();
 
-        let encrypted = Brainfuck::new().encrypt(&[], plaintext).unwrap();
+        let encrypted = Brainfuck.encrypt(&[], plaintext).unwrap();
         //dbg!(&encrypted);
 
-        let decrypted = Brainfuck::new().decrypt(&[], &encrypted).unwrap();
+        let decrypted = Brainfuck.decrypt(&[], &encrypted).unwrap();
         dbg!(&decrypted);
 
         assert_eq!(plaintext, decrypted);
@@ -614,7 +607,7 @@ He paused... then smiled. "Relax. Everything’s fine."
     fn brainfuck_decrypt_pointer_underflow() {
         let ciphertext = b"<";
 
-        let error = Brainfuck::new().decrypt(&[], ciphertext).unwrap_err();
+        let error = Brainfuck.decrypt(&[], ciphertext).unwrap_err();
         dbg!(&error);
 
         assert_eq!(
@@ -632,7 +625,7 @@ Attempting to shift data pointer below 0: 1 (<)."
     fn brainfuck_decrypt_cell_overflow() {
         let ciphertext = b"+++++[>++++++++++<-]>+[<+++++>-]<+";
 
-        let error = Brainfuck::new().decrypt(&[], ciphertext).unwrap_err();
+        let error = Brainfuck.decrypt(&[], ciphertext).unwrap_err();
         dbg!(&error);
 
         assert_eq!(
@@ -650,7 +643,7 @@ Attempting to increment cell 0 above 255: 34 (+)."
     fn brainfuck_decrypt_cell_underflow() {
         let ciphertext = b"-";
 
-        let error = Brainfuck::new().decrypt(&[], ciphertext).unwrap_err();
+        let error = Brainfuck.decrypt(&[], ciphertext).unwrap_err();
         dbg!(&error);
 
         assert_eq!(
@@ -669,7 +662,7 @@ Attempting to decrement cell 0 below 0: 1 (-)."
         // Sets cell to `5`, resets to `0`, increment to `33` (!).
         let ciphertext = b"+++,+++++++++++++++++++++++++++++++++.";
 
-        let decrypted = Brainfuck::new().decrypt(&[], ciphertext).unwrap();
+        let decrypted = Brainfuck.decrypt(&[], ciphertext).unwrap();
         dbg!(&decrypted);
 
         // If cell wasn't reset, it would print `$` (36).
@@ -680,7 +673,7 @@ Attempting to decrement cell 0 below 0: 1 (-)."
     fn brainfuck_decrypt_unbalanced_left_bracket() {
         let ciphertext = b"[[]++";
 
-        let error = Brainfuck::new().decrypt(&[], ciphertext).unwrap_err();
+        let error = Brainfuck.decrypt(&[], ciphertext).unwrap_err();
         dbg!(&error);
 
         assert_eq!(
@@ -698,7 +691,7 @@ Opening bracket is missing its pair: 1 ([)."
     fn brainfuck_decrypt_unbalanced_right_bracket_at_end() {
         let ciphertext = b"+++]";
 
-        let error = Brainfuck::new().decrypt(&[], ciphertext).unwrap_err();
+        let error = Brainfuck.decrypt(&[], ciphertext).unwrap_err();
         dbg!(&error);
 
         assert_eq!(
@@ -723,7 +716,7 @@ Closing bracket is missing its pair: 4 (])."
 +++++[>+++++++<<++>-]>.<<.
 ";
 
-        let decrypted = Brainfuck::new().decrypt(&[], ciphertext).unwrap();
+        let decrypted = Brainfuck.decrypt(&[], ciphertext).unwrap();
         dbg!(&decrypted);
 
         assert_eq!(decrypted, b"#\n");
@@ -736,7 +729,7 @@ Closing bracket is missing its pair: 4 (])."
 "A*$";?@![#>>+<<]>[>>]<<<<[>++<[-]]>.>.
 "#;
 
-        let decrypted = Brainfuck::new().decrypt(&[], ciphertext).unwrap();
+        let decrypted = Brainfuck.decrypt(&[], ciphertext).unwrap();
         dbg!(&decrypted);
 
         assert_eq!(decrypted, b"H\n");
@@ -748,7 +741,7 @@ Closing bracket is missing its pair: 4 (])."
         // and not give any output. Not essential.
         let ciphertext = b"+++++[>+++++++>++<<-]>.>.[";
 
-        let error = Brainfuck::new().decrypt(&[], ciphertext).unwrap_err();
+        let error = Brainfuck.decrypt(&[], ciphertext).unwrap_err();
         dbg!(&error);
 
         // Note: This _will_ give output in our implementation because
@@ -772,7 +765,7 @@ Opening bracket is missing its pair: 26 ([)."
         // and not give any output. Not essential.
         let ciphertext = b"+++++[>+++++++>++<<-]>.>.][";
 
-        let error = Brainfuck::new().decrypt(&[], ciphertext).unwrap_err();
+        let error = Brainfuck.decrypt(&[], ciphertext).unwrap_err();
         dbg!(&error);
 
         // Note: This _will_ give output in our implementation because

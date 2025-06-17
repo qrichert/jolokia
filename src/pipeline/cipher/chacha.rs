@@ -46,13 +46,6 @@ const HEADER: &[u8; 5] = b"CH20\x01";
 pub struct ChaCha20Poly1305;
 
 impl Cipher for ChaCha20Poly1305 {
-    fn new() -> Self
-    where
-        Self: Sized,
-    {
-        Self
-    }
-
     /// Generate a 32-byte (256-bit) encryption key.
     fn generate_key(&self) -> GeneratedKey {
         let key = ChaCha20Poly1305_::generate_key(&mut OsRng);
@@ -214,9 +207,9 @@ pub mod tests {
             .unwrap();
         let plaintext = b"hello, world!";
 
-        let encrypted = ChaCha20Poly1305::new().encrypt(&key, plaintext).unwrap();
+        let encrypted = ChaCha20Poly1305.encrypt(&key, plaintext).unwrap();
 
-        let decrypted = ChaCha20Poly1305::new().decrypt(&key, &encrypted).unwrap();
+        let decrypted = ChaCha20Poly1305.decrypt(&key, &encrypted).unwrap();
         let decrypted = String::from_utf8_lossy(&decrypted);
 
         assert_eq!(decrypted, "hello, world!");
@@ -235,7 +228,7 @@ pub mod tests {
         let mut encrypted = Vec::new();
         // TODO: We don't need the `new()`s here.
         // `ChaCha20Poly1305.encrypt_stream()` works.
-        ChaCha20Poly1305::new()
+        ChaCha20Poly1305
             .encrypt_stream(&key, &mut Cursor::new(plaintext), &mut encrypted)
             .unwrap();
         dbg!(&encrypted);
@@ -243,7 +236,7 @@ pub mod tests {
         assert!(encrypted.len() > 8);
 
         let mut decrypted = Vec::new();
-        ChaCha20Poly1305::new()
+        ChaCha20Poly1305
             .decrypt_stream(&key, &mut Cursor::new(encrypted), &mut decrypted)
             .unwrap();
         let decrypted = String::from_utf8_lossy(&decrypted);
@@ -264,7 +257,7 @@ pub mod tests {
         assert_eq!(plaintext.len(), 4096);
 
         let mut encrypted = Vec::new();
-        ChaCha20Poly1305::new()
+        ChaCha20Poly1305
             .encrypt_stream(&key, &mut Cursor::new(plaintext), &mut encrypted)
             .unwrap();
         dbg!(&encrypted);
@@ -272,7 +265,7 @@ pub mod tests {
         assert!(encrypted.len() > 8);
 
         let mut decrypted = Vec::new();
-        ChaCha20Poly1305::new()
+        ChaCha20Poly1305
             .decrypt_stream(&key, &mut Cursor::new(encrypted), &mut decrypted)
             .unwrap();
         let decrypted = String::from_utf8_lossy(&decrypted);
@@ -292,7 +285,7 @@ pub mod tests {
         assert!(plaintext.len() > 4096, "{} <= 4096", plaintext.len());
 
         let mut encrypted = Vec::new();
-        ChaCha20Poly1305::new()
+        ChaCha20Poly1305
             .encrypt_stream(&key, &mut Cursor::new(plaintext), &mut encrypted)
             .unwrap();
         dbg!(&encrypted);
@@ -300,7 +293,7 @@ pub mod tests {
         assert!(encrypted.len() > 8);
 
         let mut decrypted = Vec::new();
-        ChaCha20Poly1305::new()
+        ChaCha20Poly1305
             .decrypt_stream(&key, &mut Cursor::new(encrypted), &mut decrypted)
             .unwrap();
         let decrypted = String::from_utf8_lossy(&decrypted);

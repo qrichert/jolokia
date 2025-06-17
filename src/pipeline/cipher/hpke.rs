@@ -67,13 +67,6 @@ const EXPORT_LABEL: &[u8] = b"stream";
 pub struct Hpke;
 
 impl Cipher for Hpke {
-    fn new() -> Self
-    where
-        Self: Sized,
-    {
-        Self
-    }
-
     /// Generate an X25519 32-byte (256-bit) keypair.
     fn generate_key(&self) -> GeneratedKey {
         let mut csprng = StdRng::from_os_rng();
@@ -246,9 +239,9 @@ pub mod tests {
             .unwrap();
         let plaintext = b"hello, world!";
 
-        let encrypted = Hpke::new().encrypt(&public_key, plaintext).unwrap();
+        let encrypted = Hpke.encrypt(&public_key, plaintext).unwrap();
 
-        let decrypted = Hpke::new().decrypt(&private_key, &encrypted).unwrap();
+        let decrypted = Hpke.decrypt(&private_key, &encrypted).unwrap();
         let decrypted = String::from_utf8_lossy(&decrypted);
 
         assert_eq!(decrypted, "hello, world!");
@@ -268,16 +261,14 @@ pub mod tests {
         assert!(plaintext.len() < 4096, "{} >= 4096", plaintext.len());
 
         let mut encrypted = Vec::new();
-        Hpke::new()
-            .encrypt_stream(&public_key, &mut Cursor::new(plaintext), &mut encrypted)
+        Hpke.encrypt_stream(&public_key, &mut Cursor::new(plaintext), &mut encrypted)
             .unwrap();
         dbg!(&encrypted);
 
         assert!(encrypted.len() > 8);
 
         let mut decrypted = Vec::new();
-        Hpke::new()
-            .decrypt_stream(&private_key, &mut Cursor::new(encrypted), &mut decrypted)
+        Hpke.decrypt_stream(&private_key, &mut Cursor::new(encrypted), &mut decrypted)
             .unwrap();
         let decrypted = String::from_utf8_lossy(&decrypted);
         dbg!(&decrypted);
@@ -300,16 +291,14 @@ pub mod tests {
         assert_eq!(plaintext.len(), 4096);
 
         let mut encrypted = Vec::new();
-        Hpke::new()
-            .encrypt_stream(&public_key, &mut Cursor::new(plaintext), &mut encrypted)
+        Hpke.encrypt_stream(&public_key, &mut Cursor::new(plaintext), &mut encrypted)
             .unwrap();
         dbg!(&encrypted);
 
         assert!(encrypted.len() > 8);
 
         let mut decrypted = Vec::new();
-        Hpke::new()
-            .decrypt_stream(&private_key, &mut Cursor::new(encrypted), &mut decrypted)
+        Hpke.decrypt_stream(&private_key, &mut Cursor::new(encrypted), &mut decrypted)
             .unwrap();
         let decrypted = String::from_utf8_lossy(&decrypted);
         dbg!(&decrypted);
@@ -331,16 +320,14 @@ pub mod tests {
         assert!(plaintext.len() > 4096, "{} <= 4096", plaintext.len());
 
         let mut encrypted = Vec::new();
-        Hpke::new()
-            .encrypt_stream(&public_key, &mut Cursor::new(plaintext), &mut encrypted)
+        Hpke.encrypt_stream(&public_key, &mut Cursor::new(plaintext), &mut encrypted)
             .unwrap();
         dbg!(&encrypted);
 
         assert!(encrypted.len() > 8);
 
         let mut decrypted = Vec::new();
-        Hpke::new()
-            .decrypt_stream(&private_key, &mut Cursor::new(encrypted), &mut decrypted)
+        Hpke.decrypt_stream(&private_key, &mut Cursor::new(encrypted), &mut decrypted)
             .unwrap();
         let decrypted = String::from_utf8_lossy(&decrypted);
         dbg!(&decrypted);
