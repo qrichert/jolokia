@@ -52,8 +52,8 @@ use hpke::kem::{Kem, X25519HkdfSha256};
 use hpke::{Deserializable, OpModeR, OpModeS, Serializable};
 use rand::{SeedableRng, rngs::StdRng};
 
-use crate::pipeline::cipher::ChaCha20Poly1305;
-use crate::pipeline::traits::{self, Cipher, Error, GeneratedKey};
+use crate::cipher::ChaCha20Poly1305;
+use crate::traits::{self, Cipher, Error, GeneratedKey};
 
 // Contains algorithm name (4-bytes) and version (1-byte).
 const HEADER: &[u8; 5] = b"HPKE\x01";
@@ -223,7 +223,7 @@ pub mod tests {
 
     use super::*;
 
-    use crate::pipeline::traits::Base64Decode;
+    use crate::traits::Base64Decode;
 
     // Note: We can't really test encryption alone, because the result
     // is not deteministic (the nonce prevents identical plaintexts from

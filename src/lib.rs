@@ -1,7 +1,5 @@
-pub mod pipeline;
-
-pub use pipeline::base64;
-pub use pipeline::cipher;
-pub use pipeline::traits;
+pub mod base64;
+pub mod cipher;
+pub mod traits;
 
 pub use traits::Error;

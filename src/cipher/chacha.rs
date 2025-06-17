@@ -38,7 +38,7 @@ use aead::stream::{DecryptorBE32, EncryptorBE32};
 use chacha20poly1305::aead::KeyInit;
 use chacha20poly1305::{ChaCha20Poly1305 as ChaCha20Poly1305_, Key};
 
-use crate::pipeline::traits::{self, Cipher, Error, GeneratedKey};
+use crate::traits::{self, Cipher, Error, GeneratedKey};
 
 // Contains algorithm name (4-bytes) and version (1-byte).
 const HEADER: &[u8; 5] = b"CH20\x01";
@@ -194,7 +194,7 @@ pub mod tests {
 
     use super::*;
 
-    use crate::pipeline::traits::Base64Decode;
+    use crate::traits::Base64Decode;
 
     // Note: We can't really test encryption alone, because the result
     // is not deteministic (the nonce prevents identical plaintexts from

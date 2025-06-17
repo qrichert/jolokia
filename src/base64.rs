@@ -6,7 +6,7 @@ use base64::engine;
 use base64::prelude::BASE64_STANDARD_NO_PAD;
 use base64::{read::DecoderReader, write::EncoderWriter};
 
-use crate::pipeline::traits::{self, Base64Decode, Base64Encode, Error};
+use crate::traits::{self, Base64Decode, Base64Encode, Error};
 
 // TODO: Implement dedicated `encode_key()`/`decode_key()` methods.
 //  As per the `GeneralPurpose` engine docs:

@@ -62,7 +62,7 @@
 use std::cmp::Ordering;
 use std::io::{Read, Write};
 
-use crate::pipeline::traits::{self, Cipher, Error, GeneratedKey};
+use crate::traits::{self, Cipher, Error, GeneratedKey};
 
 /// A writer that caps line length at `N` chars.
 struct ColWriter<W: Write, const N: usize> {

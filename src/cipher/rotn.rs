@@ -2,7 +2,7 @@
 
 use std::io::{Read, Write};
 
-use crate::pipeline::traits::{self, Cipher, Error, GeneratedKey};
+use crate::traits::{self, Cipher, Error, GeneratedKey};
 
 pub struct RotN;
 
