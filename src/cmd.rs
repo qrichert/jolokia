@@ -16,12 +16,12 @@ pub fn genkey(cipher: &dyn Cipher, add_newline: bool) -> Result<(), String> {
             print!("{}", key.as_str());
         }
         GeneratedKey::Asymmetric { private, public } => {
-            let private = Zeroizing::new(private.expose_secret().base64_encode());
             let public = Zeroizing::new(public.expose_secret().base64_encode());
-            eprintln!("Private:");
-            println!("{}", private.as_str());
+            let private = Zeroizing::new(private.expose_secret().base64_encode());
             eprintln!("Public:");
-            print!("{}", public.as_str());
+            println!("{}", public.as_str());
+            eprintln!("Private:");
+            print!("{}", private.as_str());
         }
         GeneratedKey::None => {
             return Err("The selected algorithm does not generate keys.".to_string());

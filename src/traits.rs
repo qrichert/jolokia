@@ -43,8 +43,8 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub enum GeneratedKey {
     Symmetric(SecretSlice<u8>),
     Asymmetric {
-        private: SecretSlice<u8>,
         public: SecretSlice<u8>,
+        private: SecretSlice<u8>,
     },
     None,
 }
@@ -65,9 +65,9 @@ impl GeneratedKey {
     /// # Panics
     /// ...
     #[must_use]
-    pub fn get_asymmetric_private(&self) -> &SecretSlice<u8> {
+    pub fn get_asymmetric_public(&self) -> &SecretSlice<u8> {
         match self {
-            Self::Asymmetric { private, .. } => private,
+            Self::Asymmetric { public, .. } => public,
             _ => panic!("Key is not asymmetric."),
         }
     }
@@ -76,9 +76,9 @@ impl GeneratedKey {
     /// # Panics
     /// ...
     #[must_use]
-    pub fn get_asymmetric_public(&self) -> &SecretSlice<u8> {
+    pub fn get_asymmetric_private(&self) -> &SecretSlice<u8> {
         match self {
-            Self::Asymmetric { public, .. } => public,
+            Self::Asymmetric { private, .. } => private,
             _ => panic!("Key is not asymmetric."),
         }
     }

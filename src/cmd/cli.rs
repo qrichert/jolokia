@@ -34,8 +34,8 @@ impl Algorithm {
                 b"edLKPT4jYaabmMwuKzgQwklMC9HxTYmhVY7qln4yrJM".to_vec(),
             )),
             Self::Hpke => GeneratedKey::Asymmetric {
-                private: SecretSlice::from(b"cMDcZQWSnd6AQh8lZrSvDqMRr5oAA4ooGrEsrxExQAM".to_vec()),
                 public: SecretSlice::from(b"eRR5BeA731Ug5In5EELCpc8wqIUbUSHfP9vyjG1FVAU".to_vec()),
+                private: SecretSlice::from(b"cMDcZQWSnd6AQh8lZrSvDqMRr5oAA4ooGrEsrxExQAM".to_vec()),
             },
             Self::RotN => GeneratedKey::Symmetric(SecretSlice::from(b"DQ".to_vec())), // This is base64 for `13`.
             Self::Brainfuck => GeneratedKey::Symmetric(SecretSlice::from(b"QnJhaW5mdWNr".to_vec())), // Whatever.

@@ -73,8 +73,8 @@ impl Cipher for Hpke {
         let mut csprng = StdRng::from_os_rng();
         let (sk, pk) = <X25519HkdfSha256 as Kem>::gen_keypair(&mut csprng);
         GeneratedKey::Asymmetric {
-            private: SecretSlice::from(sk.to_bytes().to_vec()),
             public: SecretSlice::from(pk.to_bytes().to_vec()),
+            private: SecretSlice::from(sk.to_bytes().to_vec()),
         }
     }
 
@@ -230,10 +230,10 @@ pub mod tests {
 
     #[test]
     fn hpke_encrypt_decrypt_roundtrip() {
-        let private_key = "caEdcM9zySxJCc+HBD7QzzpJwBVWm2BcGyBMoGETi+g"
+        let public_key = "lNLRjAfH2i8QfgEBmkwb9DyigB6mFae94FYCx46qij0"
             .base64_decode()
             .unwrap();
-        let public_key = "lNLRjAfH2i8QfgEBmkwb9DyigB6mFae94FYCx46qij0"
+        let private_key = "caEdcM9zySxJCc+HBD7QzzpJwBVWm2BcGyBMoGETi+g"
             .base64_decode()
             .unwrap();
         let plaintext = b"hello, world!";
@@ -248,10 +248,10 @@ pub mod tests {
 
     #[test]
     fn hpke_encrypt_decrypt_streaming_roundtrip_shorter_than_a_chunk() {
-        let private_key = "caEdcM9zySxJCc+HBD7QzzpJwBVWm2BcGyBMoGETi+g"
+        let public_key = "lNLRjAfH2i8QfgEBmkwb9DyigB6mFae94FYCx46qij0"
             .base64_decode()
             .unwrap();
-        let public_key = "lNLRjAfH2i8QfgEBmkwb9DyigB6mFae94FYCx46qij0"
+        let private_key = "caEdcM9zySxJCc+HBD7QzzpJwBVWm2BcGyBMoGETi+g"
             .base64_decode()
             .unwrap();
         let plaintext = b"hello, world!";
@@ -277,10 +277,10 @@ pub mod tests {
 
     #[test]
     fn hpke_encrypt_decrypt_streaming_roundtrip_same_length_as_a_chunk() {
-        let private_key = "caEdcM9zySxJCc+HBD7QzzpJwBVWm2BcGyBMoGETi+g"
+        let public_key = "lNLRjAfH2i8QfgEBmkwb9DyigB6mFae94FYCx46qij0"
             .base64_decode()
             .unwrap();
-        let public_key = "lNLRjAfH2i8QfgEBmkwb9DyigB6mFae94FYCx46qij0"
+        let private_key = "caEdcM9zySxJCc+HBD7QzzpJwBVWm2BcGyBMoGETi+g"
             .base64_decode()
             .unwrap();
         let mut plaintext = b"hello, world!".repeat(315);
@@ -307,10 +307,10 @@ pub mod tests {
 
     #[test]
     fn hpke_encrypt_decrypt_streaming_roundtrip_longer_than_a_chunk() {
-        let private_key = "caEdcM9zySxJCc+HBD7QzzpJwBVWm2BcGyBMoGETi+g"
+        let public_key = "lNLRjAfH2i8QfgEBmkwb9DyigB6mFae94FYCx46qij0"
             .base64_decode()
             .unwrap();
-        let public_key = "lNLRjAfH2i8QfgEBmkwb9DyigB6mFae94FYCx46qij0"
+        let private_key = "caEdcM9zySxJCc+HBD7QzzpJwBVWm2BcGyBMoGETi+g"
             .base64_decode()
             .unwrap();
         let plaintext = b"hello, world!".repeat(320);
