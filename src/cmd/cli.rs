@@ -1,7 +1,9 @@
 use std::fs;
 use std::io::{self, IsTerminal};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
+
+use secrecy::{ExposeSecret, SecretSlice, SecretString};
 
 use jolokia::cipher;
 use jolokia::traits::{Base64Encode, Cipher, GeneratedKey};
@@ -28,15 +30,15 @@ impl Algorithm {
     /// Generic cipher key used by jolokia (this is _not secure_!).
     pub fn default_key(self) -> GeneratedKey {
         match self {
-            Self::ChaCha20Poly1305 => {
-                GeneratedKey::Symmetric(b"edLKPT4jYaabmMwuKzgQwklMC9HxTYmhVY7qln4yrJM".to_vec())
-            }
+            Self::ChaCha20Poly1305 => GeneratedKey::Symmetric(SecretSlice::from(
+                b"edLKPT4jYaabmMwuKzgQwklMC9HxTYmhVY7qln4yrJM".to_vec(),
+            )),
             Self::Hpke => GeneratedKey::Asymmetric {
-                private: b"cMDcZQWSnd6AQh8lZrSvDqMRr5oAA4ooGrEsrxExQAM".to_vec(),
-                public: b"eRR5BeA731Ug5In5EELCpc8wqIUbUSHfP9vyjG1FVAU".to_vec(),
+                private: SecretSlice::from(b"cMDcZQWSnd6AQh8lZrSvDqMRr5oAA4ooGrEsrxExQAM".to_vec()),
+                public: SecretSlice::from(b"eRR5BeA731Ug5In5EELCpc8wqIUbUSHfP9vyjG1FVAU".to_vec()),
             },
-            Self::RotN => GeneratedKey::Symmetric(b"DQ".to_vec()), // This is base64 for `13`.
-            Self::Brainfuck => GeneratedKey::Symmetric(b"QnJhaW5mdWNr".to_vec()), // Whatever.
+            Self::RotN => GeneratedKey::Symmetric(SecretSlice::from(b"DQ".to_vec())), // This is base64 for `13`.
+            Self::Brainfuck => GeneratedKey::Symmetric(SecretSlice::from(b"QnJhaW5mdWNr".to_vec())), // Whatever.
         }
     }
 }
@@ -85,11 +87,11 @@ pub enum Output {
 }
 
 #[allow(clippy::struct_excessive_bools)]
-#[derive(Debug, Default, Eq, PartialEq)]
+#[derive(Debug, Default)]
 pub struct Args {
     pub command: Option<Command>,
     pub algorithm: Option<Algorithm>,
-    pub key: Option<String>,
+    pub key: Option<SecretString>,
     pub raw: bool,
     pub message: Option<Message>,
     pub output: Output,
@@ -141,7 +143,14 @@ impl Args {
                     let Some(key) = cli_args.next() else {
                         return Err(format!("Expected key after '{}'", arg.as_ref()));
                     };
-                    args.key = Some(key.to_string());
+                    args.key = Some(SecretString::from(key.as_ref()));
+
+                    // Note: We _don't_ zeroize `arg` here, because it
+                    // would make us require a `+ Zeroize` trait bound
+                    // for no benefit whatsoever: if the secret was
+                    // passed in as a CLI arg, it's _already exposed_ to
+                    // other processes, with a (safely) immutable copy
+                    // in `argv`.
                 }
                 "-r" | "--raw" if some_command && !is_genkey => args.raw = true,
                 "-o" | "--output" if some_command && !some_output => {
@@ -205,8 +214,8 @@ impl Args {
         Ok(args)
     }
 
-    fn maybe_get_key_from_env() -> Option<String> {
-        std::env::var(KEY_ENV_VAR).ok()
+    fn maybe_get_key_from_env() -> Option<SecretString> {
+        std::env::var(KEY_ENV_VAR).ok().map(SecretString::from)
     }
 
     /// Try to extract non empty key from potentially existing file.
@@ -214,13 +223,13 @@ impl Args {
     /// The file _must_ exist, _must_ be readable, and _must_ be
     /// non-empty. If these conditions are met, the content of the file
     /// is returned (trailing whitespace gets removed).
-    fn maybe_get_key_from_file(maybe_file: &str) -> Option<String> {
-        let maybe_file = PathBuf::from(maybe_file);
+    fn maybe_get_key_from_file(maybe_file: &SecretString) -> Option<SecretString> {
+        let maybe_file = Path::new(maybe_file.expose_secret());
         if maybe_file.is_file() {
-            if let Ok(key) = fs::read_to_string(&maybe_file) {
+            if let Ok(key) = fs::read_to_string(maybe_file) {
                 let key = key.trim_end();
                 if !key.is_empty() {
-                    return Some(key.to_string());
+                    return Some(SecretString::from(key));
                 }
             }
         }
@@ -232,12 +241,13 @@ impl Args {
     /// ROT-n keys are string representations of decimal numbers
     /// (e.g, "13"). We want to normalize them into base64 so they work
     /// the same as all the other keys for all the other algorithms.
-    fn normalize_rotn_key_to_base64(key: &str) -> Result<String, String> {
+    fn normalize_rotn_key_to_base64(key: &SecretString) -> Result<SecretString, String> {
+        let key = key.expose_secret();
         let Ok(key) = key.parse::<u8>() else {
             return Err("Not a valid ROT-n key.\nChoose a value in the range 0 to 255".to_string());
         };
         let key = (&[key] as &[u8; 1]).base64_encode();
-        Ok(key)
+        Ok(SecretString::from(key))
     }
 
     fn does_stdin_have_content() -> bool {
@@ -334,13 +344,13 @@ mod tests {
     #[test]
     fn option_short_key_regular() {
         let args = Args::build_from_args(["encrypt", "-k", "abcdef"].iter()).unwrap();
-        assert!(args.key.is_some_and(|k| k == "abcdef"));
+        assert!(args.key.is_some_and(|k| k.expose_secret() == "abcdef"));
     }
 
     #[test]
     fn option_long_key_regular() {
         let args = Args::build_from_args(["encrypt", "--key", "abcdef"].iter()).unwrap();
-        assert!(args.key.is_some_and(|k| k == "abcdef"));
+        assert!(args.key.is_some_and(|k| k.expose_secret() == "abcdef"));
     }
 
     #[test]

@@ -1,6 +1,6 @@
 [package]
 name = "jolokia"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2024"
 authors = ["Quentin Richert <noreply@richert.co>"]
 description = "Simple, strong encryption."
@@ -32,3 +32,5 @@ hpke = "0.13.0"
 lessify = "0.4.0"
 # Generate pseudo-random numbers.
 rand = "0.9.1"
+# Zeroize secrets.
+secrecy = "0.10.3"

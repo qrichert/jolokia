@@ -7,6 +7,7 @@ use std::time::SystemTime;
 use std::{env, fs, process};
 
 use lessify::Pager;
+use secrecy::{ExposeSecret, SecretSlice};
 
 use jolokia::traits::{Cipher, GeneratedKey};
 
@@ -73,10 +74,11 @@ fn execute_command(command: cli::Command, args: &cli::Args) -> Result<(), String
                 get_output_or_exit(args)
             };
 
+            let key = key.expose_secret();
             if command == cli::Command::Encrypt {
-                cmd::encrypt(cipher, &key, message, output, args.raw, add_newline)?;
+                cmd::encrypt(cipher, key, message, output, args.raw, add_newline)?;
             } else if command == cli::Command::Decrypt {
-                cmd::decrypt(cipher, &key, message, output, args.raw)?;
+                cmd::decrypt(cipher, key, message, output, args.raw)?;
             }
 
             if is_in_place {
@@ -101,12 +103,12 @@ fn is_input_file_used_for_output(args: &cli::Args) -> bool {
     input_file == output_file
 }
 
-fn get_key_or_default(args: &cli::Args, algorithm: cli::Algorithm) -> Vec<u8> {
+fn get_key_or_default(args: &cli::Args, algorithm: cli::Algorithm) -> SecretSlice<u8> {
     if let Some(ref key) = args.key {
-        key.as_bytes().to_owned()
+        SecretSlice::from(key.expose_secret().as_bytes().to_vec())
     } else if algorithm == cli::Algorithm::RotN || algorithm == cli::Algorithm::Brainfuck {
         // Special do-not-warn cases.
-        algorithm.default_key().get_symmetric().to_owned()
+        algorithm.default_key().get_symmetric().clone()
     } else {
         eprintln!(
             "\
@@ -135,7 +137,7 @@ with `--key`, or set the `{key_env_var}` environment variable.",
             },
             GeneratedKey::None => unreachable!(),
         }
-        .to_owned()
+        .clone()
     }
 }
 

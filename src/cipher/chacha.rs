@@ -37,6 +37,7 @@ use aead::rand_core::{OsRng, RngCore};
 use aead::stream::{DecryptorBE32, EncryptorBE32};
 use chacha20poly1305::aead::KeyInit;
 use chacha20poly1305::{ChaCha20Poly1305 as ChaCha20Poly1305_, Key};
+use secrecy::SecretSlice;
 
 use crate::traits::{self, Cipher, Error, GeneratedKey};
 
@@ -49,7 +50,7 @@ impl Cipher for ChaCha20Poly1305 {
     /// Generate a 32-byte (256-bit) encryption key.
     fn generate_key(&self) -> GeneratedKey {
         let key = ChaCha20Poly1305_::generate_key(&mut OsRng);
-        GeneratedKey::Symmetric(key.to_vec())
+        GeneratedKey::Symmetric(SecretSlice::from(key.to_vec()))
     }
 
     fn encrypt_stream(

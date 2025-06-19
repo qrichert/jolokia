@@ -1,6 +1,8 @@
 use std::fmt;
 use std::io::{self, Read, Write};
 
+use secrecy::SecretSlice;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Error {
     Encrypt,
@@ -39,8 +41,11 @@ impl std::error::Error for Error {}
 pub type Result<T> = std::result::Result<T, Error>;
 
 pub enum GeneratedKey {
-    Symmetric(Vec<u8>),
-    Asymmetric { private: Vec<u8>, public: Vec<u8> },
+    Symmetric(SecretSlice<u8>),
+    Asymmetric {
+        private: SecretSlice<u8>,
+        public: SecretSlice<u8>,
+    },
     None,
 }
 
@@ -49,7 +54,7 @@ impl GeneratedKey {
     /// # Panics
     /// ...
     #[must_use]
-    pub fn get_symmetric(&self) -> &Vec<u8> {
+    pub fn get_symmetric(&self) -> &SecretSlice<u8> {
         match self {
             Self::Symmetric(key) => key,
             _ => panic!("Key is not symmetric."),
@@ -60,7 +65,7 @@ impl GeneratedKey {
     /// # Panics
     /// ...
     #[must_use]
-    pub fn get_asymmetric_private(&self) -> &Vec<u8> {
+    pub fn get_asymmetric_private(&self) -> &SecretSlice<u8> {
         match self {
             Self::Asymmetric { private, .. } => private,
             _ => panic!("Key is not asymmetric."),
@@ -71,7 +76,7 @@ impl GeneratedKey {
     /// # Panics
     /// ...
     #[must_use]
-    pub fn get_asymmetric_public(&self) -> &Vec<u8> {
+    pub fn get_asymmetric_public(&self) -> &SecretSlice<u8> {
         match self {
             Self::Asymmetric { public, .. } => public,
             _ => panic!("Key is not asymmetric."),

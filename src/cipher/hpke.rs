@@ -51,6 +51,7 @@ use hpke::kdf::HkdfSha256;
 use hpke::kem::{Kem, X25519HkdfSha256};
 use hpke::{Deserializable, OpModeR, OpModeS, Serializable};
 use rand::{SeedableRng, rngs::StdRng};
+use secrecy::{SecretSlice, zeroize::Zeroizing};
 
 use crate::cipher::ChaCha20Poly1305;
 use crate::traits::{self, Cipher, Error, GeneratedKey};
@@ -72,8 +73,8 @@ impl Cipher for Hpke {
         let mut csprng = StdRng::from_os_rng();
         let (sk, pk) = <X25519HkdfSha256 as Kem>::gen_keypair(&mut csprng);
         GeneratedKey::Asymmetric {
-            private: sk.to_bytes().to_vec(),
-            public: pk.to_bytes().to_vec(),
+            private: SecretSlice::from(sk.to_bytes().to_vec()),
+            public: SecretSlice::from(pk.to_bytes().to_vec()),
         }
     }
 
@@ -120,11 +121,9 @@ impl Cipher for Hpke {
         // (dropped after use). During decryption, it is derived by
         // combining the recipient's private key, and the public key
         // (`encapsulated_public_key`) that we send along.
-        //
-        // TODO: Zeroize the symmetric key.
-        let mut symmetric_key = [0u8; 32];
+        let mut symmetric_key = Zeroizing::new([0u8; 32]);
         encryption_context
-            .export(EXPORT_LABEL, &mut symmetric_key)
+            .export(EXPORT_LABEL, symmetric_key.as_mut_slice())
             .map_err(|_| Error::Encrypt)?;
 
         writer
@@ -146,7 +145,7 @@ impl Cipher for Hpke {
 
         // We've written the header and the encapsulated public key,
         // the only thing left to do is to append the encrypted payload.
-        ChaCha20Poly1305.encrypt_stream(&symmetric_key, reader, writer)?;
+        ChaCha20Poly1305.encrypt_stream(symmetric_key.as_ref(), reader, writer)?;
 
         Ok(())
     }
@@ -205,13 +204,13 @@ impl Cipher for Hpke {
         .map_err(|_| Error::Decrypt)?;
 
         // Derive the 32-byte shared symmetric key.
-        let mut symmetric_key = [0u8; 32];
+        let mut symmetric_key = Zeroizing::new([0u8; 32]);
         decryption_context
-            .export(EXPORT_LABEL, &mut symmetric_key)
+            .export(EXPORT_LABEL, symmetric_key.as_mut_slice())
             .map_err(|_| Error::Decrypt)?;
 
         // We've got the symmetric key, decrypt the payload.
-        ChaCha20Poly1305.decrypt_stream(&symmetric_key, reader, writer)?;
+        ChaCha20Poly1305.decrypt_stream(symmetric_key.as_ref(), reader, writer)?;
 
         Ok(())
     }

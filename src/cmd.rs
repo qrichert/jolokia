@@ -3,6 +3,8 @@ pub mod ui;
 
 use std::io::{Read, Write};
 
+use secrecy::{ExposeSecret, zeroize::Zeroizing};
+
 use jolokia::base64::{Base64Sink, Base64Source};
 use jolokia::traits::{Base64Decode, Base64Encode, Cipher, GeneratedKey};
 
@@ -10,13 +12,16 @@ use jolokia::traits::{Base64Decode, Base64Encode, Cipher, GeneratedKey};
 pub fn genkey(cipher: &dyn Cipher, add_newline: bool) -> Result<(), String> {
     match cipher.generate_key() {
         GeneratedKey::Symmetric(key) => {
-            print!("{}", key.base64_encode());
+            let key = Zeroizing::new(key.expose_secret().base64_encode());
+            print!("{}", key.as_str());
         }
         GeneratedKey::Asymmetric { private, public } => {
+            let private = Zeroizing::new(private.expose_secret().base64_encode());
+            let public = Zeroizing::new(public.expose_secret().base64_encode());
             eprintln!("Private:");
-            println!("{}", private.base64_encode());
+            println!("{}", private.as_str());
             eprintln!("Public:");
-            print!("{}", public.base64_encode());
+            print!("{}", public.as_str());
         }
         GeneratedKey::None => {
             return Err("The selected algorithm does not generate keys.".to_string());
@@ -36,7 +41,7 @@ pub fn encrypt<R: Read, W: Write>(
     from_raw_bytes: bool,
     add_newline: bool,
 ) -> Result<(), String> {
-    let key = decode_base64_key(key)?;
+    let key = Zeroizing::new(decode_base64_key(key)?);
 
     let mut sink: Box<dyn Write> = if from_raw_bytes {
         Box::new(&mut output)
@@ -66,7 +71,7 @@ pub fn decrypt<R: Read, W: Write>(
     mut output: W,
     to_raw_bytes: bool,
 ) -> Result<(), String> {
-    let key = decode_base64_key(key)?;
+    let key = Zeroizing::new(decode_base64_key(key)?);
 
     let mut source: Box<dyn Read> = if to_raw_bytes {
         Box::new(&mut ciphertext)
