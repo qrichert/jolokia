@@ -34,3 +34,7 @@ lessify = "0.4.0"
 rand = "0.9.1"
 # Zeroize secrets.
 secrecy = "0.10.3"
+
+[dev-dependencies]
+# Checksums.
+blake3 = "1.8.2"

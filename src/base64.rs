@@ -164,8 +164,27 @@ pub mod tests {
     }
 
     #[test]
-    fn base64_decode_string() {
+    fn base64_encode_bytes_vec() {
+        let plaintext = b"hello, world!".to_vec();
+
+        let base64 = plaintext.base64_encode();
+
+        assert_eq!(base64, "aGVsbG8sIHdvcmxkIQ");
+    }
+
+    #[test]
+    fn base64_decode_str() {
         let base64 = "aGVsbG8sIHdvcmxkIQ";
+
+        let plaintext = base64.base64_decode().unwrap();
+        let plaintext = String::from_utf8_lossy(&plaintext).to_string();
+
+        assert_eq!(plaintext, "hello, world!");
+    }
+
+    #[test]
+    fn base64_decode_string() {
+        let base64 = "aGVsbG8sIHdvcmxkIQ".to_string();
 
         let plaintext = base64.base64_decode().unwrap();
         let plaintext = String::from_utf8_lossy(&plaintext).to_string();
