@@ -24,10 +24,8 @@ pub fn get_test_file(file_name: &str) -> PathBuf {
 
 pub fn run(args: &[&str]) -> Output {
     let mut command = Command::new(JOLOKIA);
-    // TODO:
-    //command.current_dir(dir.as_ref());
-    //command.env("NO_COLOR", "1");
-    //command.env_remove("PAGER");
+    command.env("NO_COLOR", "1");
+    command.env_remove("PAGER");
 
     for arg in args {
         command.arg(arg);
