@@ -50,9 +50,11 @@ pub enum GeneratedKey {
 }
 
 impl GeneratedKey {
-    // TODO: docstring
+    /// Extract symmetric key.
+    ///
     /// # Panics
-    /// ...
+    ///
+    /// Panics if key is not a symmetric key.
     #[must_use]
     pub fn get_symmetric(&self) -> &SecretSlice<u8> {
         match self {
@@ -61,9 +63,11 @@ impl GeneratedKey {
         }
     }
 
-    // TODO: docstring
+    /// Extract asymmetric public key.
+    ///
     /// # Panics
-    /// ...
+    ///
+    /// Panics if key is not an asymmetric key.
     #[must_use]
     pub fn get_asymmetric_public(&self) -> &SecretSlice<u8> {
         match self {
@@ -72,9 +76,11 @@ impl GeneratedKey {
         }
     }
 
-    // TODO: docstring
+    /// Extract asymmetric private key.
+    ///
     /// # Panics
-    /// ...
+    ///
+    /// Panics if key is not an asymmetric key.
     #[must_use]
     pub fn get_asymmetric_private(&self) -> &SecretSlice<u8> {
         match self {
@@ -85,7 +91,7 @@ impl GeneratedKey {
 }
 
 pub trait Cipher {
-    /// Generate cipher Key.
+    /// Generate cipher key.
     #[must_use]
     fn generate_key(&self) -> GeneratedKey;
 
