@@ -5,27 +5,25 @@ use jolokia::traits::Base64Decode;
 use utils::{checksum, get_test_file, run};
 
 #[test]
-fn hpke_keygen() {
-    let output = run(&["keygen", "-a", "hpke"]);
+fn chacha_keygen() {
+    let output = run(&["keygen", "-a", "chacha"]);
     dbg!(&output);
-    let (pubkey, privkey) = output.stdout.split_once('\n').unwrap();
-    dbg!(pubkey, privkey);
+    let key = output.stdout;
+    dbg!(&key);
 
-    let pubkey = pubkey.base64_decode().unwrap();
-    let privkey = privkey.base64_decode().unwrap();
+    let key = key.base64_decode().unwrap();
 
-    assert!(pubkey.len() == 32);
-    assert!(privkey.len() == 32);
+    assert!(key.len() == 32);
 }
 
 #[test]
-fn hpke_encrypt() {
+fn chacha_encrypt() {
     let output = run(&[
         "encrypt",
         "-a",
-        "hpke",
+        "chacha",
         "-k",
-        "QfSivWNCgT8oeOoTuAWK4cat1PpSCU1GhxXwcfxjlFE",
+        "9zcb2kyrHdHG0w7yGUs7dcYK7YWKAuatm77FgoLoO2A",
         "lorem ipsum dolor sit amet",
     ]);
 
@@ -37,14 +35,14 @@ fn hpke_encrypt() {
 }
 
 #[test]
-fn hpke_decrypt() {
+fn chacha_decrypt() {
     let output = run(&[
         "decrypt",
         "-a",
-        "hpke",
+        "chacha",
         "-k",
-        "KkQpXGsXQTmGD0UI0Z8wejnmw8UAg+YRMgviV1x+abA",
-        "SFBLRQEAIF8k55ZEOO6wlScUZSntiWqT1dP1T/bMhywp3kEkxQB5Q0gyMAHU1a6oIPlVAAAAKlbKzpjJk0EHu/6gTn/7DllxCLS74Gvad+MojxSnkQFr/PlfB6iToal23AAAAAA",
+        "9zcb2kyrHdHG0w7yGUs7dcYK7YWKAuatm77FgoLoO2A",
+        "Q0gyMAE+uvjw+kK0AAAAKiWpFnhyfdVM5v6z0a2g5eEEVM2FaqguZxjjF7g2CYSncAcmpACrlLkCpQAAAAA",
     ]);
 
     dbg!(&output);
@@ -53,27 +51,24 @@ fn hpke_decrypt() {
     assert_eq!(output.stdout, "lorem ipsum dolor sit amet");
 }
 
-// This is the most wholistic test of the entire test suite. It tests
-// in-place ciphering, base64 encoding, streaming, HPKE, and ChaCha.
-// The whole pipeline is tested on its most sensitive parts.
 #[test]
-fn hpke_in_place_round_trip() {
+fn chacha_in_place_round_trip() {
     // Get initial file checksum.
-    let file = get_test_file("hpke_in_place_round_trip");
+    let file = get_test_file("chacha_in_place_round_trip");
     let file_path = file.to_string_lossy().to_string();
     dbg!(&file);
     let checksum_initial = checksum(&file);
     dbg!(&checksum_initial);
 
     // Generate keypair.
-    let output = run(&["keygen", "-a", "hpke"]);
+    let output = run(&["keygen", "-a", "chacha"]);
     dbg!(&output);
-    let (pubkey, privkey) = output.stdout.split_once('\n').unwrap();
-    dbg!(pubkey, privkey);
+    let key = output.stdout;
+    dbg!(&key);
 
     // Encrypt file in-place.
     let output = run(&[
-        "encrypt", "-a", "hpke", "-k", pubkey, "-f", &file_path, "-i",
+        "encrypt", "-a", "chacha", "-k", &key, "-f", &file_path, "-i",
     ]);
     dbg!(&output);
 
@@ -84,7 +79,7 @@ fn hpke_in_place_round_trip() {
 
     // Decrypt file in-place.
     let output = run(&[
-        "decrypt", "-a", "hpke", "-k", privkey, "-f", &file_path, "-i",
+        "decrypt", "-a", "chacha", "-k", &key, "-f", &file_path, "-i",
     ]);
     dbg!(&output);
 

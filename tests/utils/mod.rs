@@ -22,6 +22,15 @@ pub fn get_test_file(file_name: &str) -> PathBuf {
     cat_dest
 }
 
+pub fn get_text_file(file_name: &str) -> PathBuf {
+    let lorem_source = Path::new(FIXTURES_DIR).join("lorem.txt");
+    let lorem_dest = Path::new(TMP_DIR)
+        .join(file_name)
+        .with_extension(lorem_source.extension().unwrap());
+    std::fs::copy(lorem_source, &lorem_dest).unwrap();
+    lorem_dest
+}
+
 pub fn run(args: &[&str]) -> Output {
     let mut command = Command::new(JOLOKIA);
     command.env("NO_COLOR", "1");
