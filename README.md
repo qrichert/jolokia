@@ -11,7 +11,7 @@ _Simple, strong encryption._
 ## Examples
 
 ```console
-$ jolokia genkey
+$ jolokia keygen
 hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w
 
 $ jolokia encrypt "hello, world!" --key hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w
@@ -36,7 +36,7 @@ Simple, strong encryption.
 Usage: jolokia [<options>] <command> [<args>]
 
 Commands:
-  genkey                 Generate cipher key
+  keygen                 Generate cipher key
   encrypt                Encrypt plaintext
   decrypt                Decrypt ciphertext
 
@@ -86,7 +86,7 @@ of the key varies depending on the selected algorithm.
 To generate a new key run:
 
 ```console
-$ jolokia genkey
+$ jolokia keygen
 hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w
 ```
 

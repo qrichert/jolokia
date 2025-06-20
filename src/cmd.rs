@@ -9,7 +9,7 @@ use jolokia::base64::{Base64Sink, Base64Source};
 use jolokia::traits::{Base64Decode, Base64Encode, Cipher, GeneratedKey};
 
 #[allow(clippy::unnecessary_wraps)] // Keep return type consistent.
-pub fn genkey(cipher: &dyn Cipher, add_newline: bool) -> Result<(), String> {
+pub fn keygen(cipher: &dyn Cipher, add_newline: bool) -> Result<(), String> {
     match cipher.generate_key() {
         GeneratedKey::Symmetric(key) => {
             let key = Zeroizing::new(key.expose_secret().base64_encode());

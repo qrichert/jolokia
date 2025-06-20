@@ -61,7 +61,7 @@ fn execute_command(command: cli::Command, args: &cli::Args) -> Result<(), String
     let add_newline = !matches!(args.output, cli::Output::Redirected);
 
     match command {
-        cli::Command::GenKey => cmd::genkey(cipher.as_ref(), add_newline),
+        cli::Command::KeyGen => cmd::keygen(cipher.as_ref(), add_newline),
         cli::Command::Encrypt | cli::Command::Decrypt => {
             let is_in_place = is_input_file_used_for_output(args);
 
@@ -117,7 +117,7 @@ fn get_key_or_default(args: &cli::Args, algorithm: cli::Algorithm) -> SecretSlic
                        {b}THIS IS NOT SECURE!{rt}
 
 Anyone using {package} will be able to decrypt your messages. To generate
-a unique cipher key, run `{bin} genkey`, and use it on the command line
+a unique cipher key, run `{bin} keygen`, and use it on the command line
 with `--key`, or set the `{key_env_var}` environment variable.",
             warning = ui::Color::warning("warning"),
             package = env!("CARGO_PKG_NAME"),
@@ -271,7 +271,7 @@ fn short_help_message() -> String {
 Usage: {bin} [<options>] <command> [<args>]
 
 Commands:
-  genkey                 Generate cipher key
+  keygen                 Generate cipher key
   encrypt                Encrypt plaintext
   decrypt                Decrypt ciphertext
 
@@ -321,7 +321,7 @@ Key:
 
   To generate a new key run:
 
-      {h}${rt} {bin} genkey
+      {h}${rt} {bin} keygen
       hNbaua5cGlUNsEp4HSUTSJG7gl5IURQiTvnABzhFW4w
 
   To use the key, pass it as `--key` or `-k`:

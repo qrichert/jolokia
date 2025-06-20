@@ -12,7 +12,7 @@ pub const KEY_ENV_VAR: &str = "JOLOKIA_CIPHER_KEY";
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Command {
-    GenKey,
+    KeyGen,
     Encrypt,
     Decrypt,
 }
@@ -114,10 +114,10 @@ impl Args {
             let some_message = args.message.is_some();
             let some_output = matches!(args.output, Output::File(_));
 
-            let is_genkey = args
+            let is_keygen = args
                 .command
                 .as_ref()
-                .is_some_and(|c| matches!(c, Command::GenKey));
+                .is_some_and(|c| matches!(c, Command::KeyGen));
             let message_file = match args.message.as_ref() {
                 Some(Message::File(f)) => Some(f),
                 _ => None,
@@ -127,7 +127,7 @@ impl Args {
                 "-h" => args.short_help = true,
                 "--help" => args.long_help = true,
                 "-V" | "--version" => args.version = true,
-                "genkey" if !some_command => args.command = Some(Command::GenKey),
+                "keygen" if !some_command => args.command = Some(Command::KeyGen),
                 "encrypt" if !some_command => args.command = Some(Command::Encrypt),
                 "decrypt" if !some_command => args.command = Some(Command::Decrypt),
                 "-a" | "--algorithm" if some_command && !some_algorithm => {
@@ -139,7 +139,7 @@ impl Args {
                     };
                     args.algorithm = Some(algorithm);
                 }
-                "-k" | "--key" if some_command && !is_genkey && !some_key => {
+                "-k" | "--key" if some_command && !is_keygen && !some_key => {
                     let Some(key) = cli_args.next() else {
                         return Err(format!("Expected key after '{}'", arg.as_ref()));
                     };
@@ -152,7 +152,7 @@ impl Args {
                     // other processes, with a (safely) immutable copy
                     // in `argv`.
                 }
-                "-r" | "--raw" if some_command && !is_genkey => args.raw = true,
+                "-r" | "--raw" if some_command && !is_keygen => args.raw = true,
                 "-o" | "--output" if some_command && !some_output => {
                     let Some(file) = cli_args.next() else {
                         return Err(format!("Expected file name after '{}'", arg.as_ref()));
@@ -169,7 +169,7 @@ impl Args {
                     let message_file = message_file.expect("it is `Some`");
                     args.output = Output::File(message_file.to_owned());
                 }
-                message if some_command && !is_genkey && !some_message => {
+                message if some_command && !is_keygen && !some_message => {
                     args.message = Some(Message::String(message.to_string()));
                 }
                 unknown => {
@@ -276,14 +276,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn command_genkey_regular() {
-        let args = Args::build_from_args(["genkey"].iter()).unwrap();
-        assert!(args.command.is_some_and(|c| c == Command::GenKey));
+    fn command_keygen_regular() {
+        let args = Args::build_from_args(["keygen"].iter()).unwrap();
+        assert!(args.command.is_some_and(|c| c == Command::KeyGen));
     }
 
     #[test]
-    fn second_command_does_not_override_genkey() {
-        let err = Args::build_from_args(["genkey", "encrypt"].iter()).unwrap_err();
+    fn second_command_does_not_override_keygen() {
+        let err = Args::build_from_args(["keygen", "encrypt"].iter()).unwrap_err();
         assert!(err.contains("'encrypt'"));
     }
 
@@ -307,7 +307,7 @@ mod tests {
 
     #[test]
     fn second_command_does_not_override_decrypt() {
-        let args = Args::build_from_args(["decrypt", "genkey"].iter()).unwrap();
+        let args = Args::build_from_args(["decrypt", "keygen"].iter()).unwrap();
         assert!(args.command.is_some_and(|c| c == Command::Decrypt));
     }
 
