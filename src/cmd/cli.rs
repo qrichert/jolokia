@@ -178,6 +178,10 @@ impl Args {
             }
         }
 
+        if args.key.is_some() && args.algorithm == Some(Algorithm::Brainfuck) {
+            return Err("Brainfuck does not use keys".to_string());
+        }
+
         // Default to `--raw` for ROT-n and Brainfuck.
         if matches!(args.algorithm, Some(Algorithm::RotN | Algorithm::Brainfuck)) {
             args.raw = true;

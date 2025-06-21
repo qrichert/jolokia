@@ -58,7 +58,7 @@ Try '{bin} -h' for help.",
 fn execute_command(command: cli::Command, args: &cli::Args) -> Result<(), String> {
     let algorithm = args.algorithm.unwrap_or_default();
     let cipher: Box<dyn Cipher> = algorithm.into();
-    let add_newline = !matches!(args.output, cli::Output::Redirected);
+    let add_newline = args.output == cli::Output::Stdout;
 
     match command {
         cli::Command::KeyGen => cmd::keygen(cipher.as_ref(), add_newline),
@@ -104,11 +104,11 @@ fn is_input_file_used_for_output(args: &cli::Args) -> bool {
 }
 
 fn get_key_or_default(args: &cli::Args, algorithm: cli::Algorithm) -> SecretSlice<u8> {
-    if let Some(ref key) = args.key {
-        SecretSlice::from(key.expose_secret().as_bytes().to_vec())
-    } else if algorithm == cli::Algorithm::RotN || algorithm == cli::Algorithm::Brainfuck {
+    if algorithm == cli::Algorithm::RotN || algorithm == cli::Algorithm::Brainfuck {
         // Special do-not-warn cases.
         algorithm.default_key().get_symmetric().clone()
+    } else if let Some(ref key) = args.key {
+        SecretSlice::from(key.expose_secret().as_bytes().to_vec())
     } else {
         eprintln!(
             "\
