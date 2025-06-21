@@ -203,7 +203,8 @@ file size possible.
       `JOLOKIA_CIPHER_KEY_CHACHA20POLY1305`?). If so, rename
       `JOLOKIA_CIPHER_KEY` to just `JOLOKIA_KEY`.
 - [ ] Add tests. Test coverage is _decent_. What's missing to get to
-  100% are tests for the error cases, edge cases, and false negatives.
+      100% are tests for the error cases, edge cases, and false
+      negatives.
 
 ## Installation
 
