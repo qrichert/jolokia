@@ -77,7 +77,7 @@ coverage: ## Unit tests coverage report
 cpc: coverage-pct
 .PHONY: coverage-pct
 coverage-pct: ## Ensure code coverage minimum %
-	@cargo tarpaulin --engine Llvm --timeout 120 --out Stdout --all-features --fail-under 30
+	@cargo tarpaulin --engine Llvm --timeout 120 --out Stdout --all-features --fail-under 80
 
 .PHONY: install
 install: ## Install cronrunner

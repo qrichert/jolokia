@@ -160,3 +160,61 @@ pub trait Base64Decode {
     /// Errors if `self` does not contain valid base64.
     fn base64_decode(&self) -> Result<Vec<u8>>;
 }
+
+#[cfg(test)]
+mod tests {
+    use secrecy::ExposeSecret;
+
+    use super::*;
+
+    #[test]
+    fn generated_key_get_symmetric() {
+        let key = GeneratedKey::Symmetric(SecretSlice::from(vec![0, 1, 2, 3]));
+
+        assert_eq!(key.get_symmetric().expose_secret(), [0, 1, 2, 3]);
+    }
+
+    #[test]
+    #[should_panic(expected = "Key is not symmetric.")]
+    fn generated_key_get_symmetric_panics_if_wrong_variant() {
+        let key = GeneratedKey::None;
+
+        _ = key.get_symmetric();
+    }
+
+    #[test]
+    fn generated_key_get_asymmetric_public() {
+        let key = GeneratedKey::Asymmetric {
+            public: SecretSlice::from(vec![0, 1, 2, 3]),
+            private: SecretSlice::from(vec![4, 5, 6, 7]),
+        };
+
+        assert_eq!(key.get_asymmetric_public().expose_secret(), [0, 1, 2, 3]);
+    }
+
+    #[test]
+    #[should_panic(expected = "Key is not asymmetric.")]
+    fn generated_key_get_asymmetric_public_panics_if_wrong_variant() {
+        let key = GeneratedKey::None;
+
+        _ = key.get_asymmetric_public();
+    }
+
+    #[test]
+    fn generated_key_get_asymmetric_private() {
+        let key = GeneratedKey::Asymmetric {
+            public: SecretSlice::from(vec![0, 1, 2, 3]),
+            private: SecretSlice::from(vec![4, 5, 6, 7]),
+        };
+
+        assert_eq!(key.get_asymmetric_private().expose_secret(), [4, 5, 6, 7]);
+    }
+
+    #[test]
+    #[should_panic(expected = "Key is not asymmetric.")]
+    fn generated_key_get_asymmetric_private_panics_if_wrong_variant() {
+        let key = GeneratedKey::None;
+
+        _ = key.get_asymmetric_private();
+    }
+}

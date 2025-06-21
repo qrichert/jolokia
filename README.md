@@ -198,14 +198,12 @@ file size possible.
 
 ## Roadmap
 
-- [ ] Complete `--help`.
-- [x] HPKE
 - [ ] If multiple algorithms, should we keep `JOLOKIA_CIPHER_KEY` as
       default also support specialized:
       `JOLOKIA_CIPHER_KEY_CHACHA20POLY1305`?). If so, rename
       `JOLOKIA_CIPHER_KEY` to just `JOLOKIA_KEY`.
-- [x] Zeroize secrets.
-- [ ] Add tests. The ciphers are well tested, but the CLI needs more.
+- [ ] Add tests. Test coverage is _decent_. What's missing to get to
+  100% are tests for the error cases, edge cases, and false negatives.
 
 ## Installation
 
