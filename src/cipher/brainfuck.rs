@@ -403,7 +403,6 @@ impl Cipher for Brainfuck {
     /// Somehow, C-style looks much cleaner here than idiomatic Rust.
     /// Maybe because Brainfuck itself is all about indexes and jumps.
     #[allow(
-        clippy::match_on_vec_items,
         clippy::needless_range_loop,
         clippy::redundant_else,
         clippy::too_many_lines
