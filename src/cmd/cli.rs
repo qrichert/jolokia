@@ -198,11 +198,10 @@ impl Args {
                 args.key = Some(key);
             }
         }
-        // TODO: Simplify with `if let` chain.
-        if let Some(ref key) = args.key {
-            if args.algorithm == Some(Algorithm::RotN) {
-                args.key = Some(Self::normalize_rotn_key_to_base64(key)?);
-            }
+        if let Some(ref key) = args.key
+            && args.algorithm == Some(Algorithm::RotN)
+        {
+            args.key = Some(Self::normalize_rotn_key_to_base64(key)?);
         }
 
         // If not message, try `stdin`.
