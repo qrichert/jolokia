@@ -26,13 +26,14 @@
 //! same for other common ones too.
 //!
 //! Optimizations could go way beyond caching characters, but this is
-//! more of an experiment than anything useful, so I'll leave it at that.
+//! more of an experiment than anything useful, so I'll leave it at
+//! that.
 //!
 //! For the current implementation (`wc -m`):
 //!
 //! - Base text: 810
 //! - Naive output: 27779
-//! - Optimized ouput: 7706
+//! - Optimized ouput: 7701
 //!
 //! Text:
 //!
@@ -64,6 +65,57 @@ use std::io::{Read, Write};
 
 use crate::traits::{self, Cipher, Error, GeneratedKey};
 
+/// A writer that only writes what's preceding (and including) a `.`.
+struct DotWriter<W: Write> {
+    inner: W,
+    buffer: Vec<u8>,
+}
+
+impl<W: Write> DotWriter<W> {
+    fn new(writer: W) -> Self {
+        Self {
+            inner: writer,
+            buffer: Vec::new(),
+        }
+    }
+}
+
+impl<W: Write> Write for DotWriter<W> {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        if let Some(last_dot) = buf.iter().rposition(|&c| c == b'.') {
+            // If '.', write everything that comes before it, (including
+            // any buffered data), and buffer the remaining part.
+
+            self.inner.write_all(&self.buffer)?;
+            self.buffer.clear();
+
+            // `+ 1` because `split_at()` puts `mid` in the right part,
+            // and we want it in the left part. `split_at()` panics if
+            // `mid > len`, but it's OK because the `.` can be at
+            // `len - 1` at most.
+            let (to_write, to_buffer) = buf.split_at(last_dot + 1);
+
+            self.inner.write_all(to_write)?;
+            self.buffer.extend(to_buffer);
+        } else {
+            // No '.' = buffer for now.
+            self.buffer.extend(buf);
+        }
+
+        // Report back what the caller expects, not what we actually
+        // wrote (we add '\n's), lest it panics.
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        // Only write up-to (and including) the last dot.
+        if let Some(last_dot) = self.buffer.iter().rposition(|&c| c == b'.') {
+            self.inner.write_all(&self.buffer[..=last_dot])?;
+        }
+        self.inner.flush()
+    }
+}
+
 /// A writer that caps line length at `N` chars.
 struct ColWriter<W: Write, const N: usize> {
     inner: W,
@@ -82,13 +134,13 @@ impl<W: Write, const N: usize> ColWriter<W, { N }> {
 impl<W: Write, const N: usize> Write for ColWriter<W, { N }> {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         for &c in buf {
-            self.inner.write(&[c])?;
+            self.inner.write_all(&[c])?;
             self.line_length += 1;
             if c == b'\n' {
                 self.line_length = 0;
             } else if self.line_length == N {
                 self.line_length = 0;
-                self.inner.write(b"\n")?;
+                self.inner.write_all(b"\n")?;
             }
         }
         // Report back what the caller expects, not what we actually
@@ -303,7 +355,8 @@ impl Cipher for Brainfuck {
         reader: &mut dyn Read,
         writer: &mut dyn Write,
     ) -> traits::Result<()> {
-        let mut writer = ColWriter::<_, 72>::new(writer);
+        let writer = ColWriter::<_, 72>::new(writer);
+        let mut writer = DotWriter::new(writer);
 
         // Init character register 1 to 97 (a).
         let mut previous_char = 97;
@@ -581,12 +634,9 @@ He paused... then smiled. "Relax. Everything’s fine."
         let plaintext = TEXT.as_bytes();
 
         let encrypted = Brainfuck.encrypt(&[], plaintext).unwrap();
-        dbg!(&encrypted);
+        dbg!(String::from_utf8_lossy(&encrypted));
 
-        //panic!("{}", String::from_utf8_lossy(&encrypted).to_string());
-
-        // -1 compared to stdout because no newline.
-        assert_eq!(encrypted.len(), 7706 - 1);
+        assert_eq!(encrypted.len(), 7701);
     }
 
     #[test]
@@ -594,10 +644,10 @@ He paused... then smiled. "Relax. Everything’s fine."
         let plaintext = TEXT.as_bytes();
 
         let encrypted = Brainfuck.encrypt(&[], plaintext).unwrap();
-        //dbg!(&encrypted);
+        dbg!(String::from_utf8_lossy(&encrypted));
 
         let decrypted = Brainfuck.decrypt(&[], &encrypted).unwrap();
-        dbg!(&decrypted);
+        dbg!(String::from_utf8_lossy(&decrypted));
 
         assert_eq!(plaintext, decrypted);
     }
@@ -662,7 +712,7 @@ Attempting to decrement cell 0 below 0: 1 (-)."
         let ciphertext = b"+++,+++++++++++++++++++++++++++++++++.";
 
         let decrypted = Brainfuck.decrypt(&[], ciphertext).unwrap();
-        dbg!(&decrypted);
+        dbg!(String::from_utf8_lossy(&decrypted));
 
         // If cell wasn't reset, it would print `$` (36).
         assert_eq!(decrypted, b"!");
@@ -716,7 +766,7 @@ Closing bracket is missing its pair: 4 (])."
 ";
 
         let decrypted = Brainfuck.decrypt(&[], ciphertext).unwrap();
-        dbg!(&decrypted);
+        dbg!(String::from_utf8_lossy(&decrypted));
 
         assert_eq!(decrypted, b"#\n");
     }
@@ -729,7 +779,7 @@ Closing bracket is missing its pair: 4 (])."
 "#;
 
         let decrypted = Brainfuck.decrypt(&[], ciphertext).unwrap();
-        dbg!(&decrypted);
+        dbg!(String::from_utf8_lossy(&decrypted));
 
         assert_eq!(decrypted, b"H\n");
     }
