@@ -71,19 +71,37 @@ impl From<Algorithm> for Box<dyn Cipher> {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Message {
     String(String),
     File(PathBuf),
     Stdin,
 }
 
-#[derive(Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub enum Output {
     File(PathBuf),
     #[default]
     Stdout,
     Redirected,
+}
+
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
+pub enum Newline {
+    ForceYes,
+    ForceNo,
+    #[default]
+    Unspecified,
+}
+
+impl Newline {
+    pub fn to_bool(self) -> Option<bool> {
+        match self {
+            Self::ForceYes => Some(true),
+            Self::ForceNo => Some(false),
+            Self::Unspecified => None,
+        }
+    }
 }
 
 #[allow(clippy::struct_excessive_bools)]
@@ -95,6 +113,7 @@ pub struct Args {
     pub raw: bool,
     pub message: Option<Message>,
     pub output: Output,
+    pub newline: Newline,
     pub short_help: bool,
     pub long_help: bool,
     pub version: bool,
@@ -127,6 +146,8 @@ impl Args {
                 "-h" => args.short_help = true,
                 "--help" => args.long_help = true,
                 "-V" | "--version" => args.version = true,
+                "-n" | "--newline" => args.newline = Newline::ForceYes,
+                "-N" | "--no-newline" => args.newline = Newline::ForceNo,
                 "keygen" if !some_command => args.command = Some(Command::KeyGen),
                 "encrypt" if !some_command => args.command = Some(Command::Encrypt),
                 "decrypt" if !some_command => args.command = Some(Command::Decrypt),
@@ -390,6 +411,51 @@ mod tests {
     fn option_long_output_regular() {
         let args = Args::build_from_args(["encrypt", "--output", "out.enc"].iter()).unwrap();
         assert_eq!(args.output, Output::File(PathBuf::from("out.enc")));
+    }
+
+    #[test]
+    fn option_newline_default() {
+        let args = Args::build_from_args(["encrypt"].iter()).unwrap();
+        assert!(args.newline == Newline::Unspecified);
+    }
+
+    #[test]
+    fn option_short_newline_regular() {
+        let args = Args::build_from_args(["encrypt", "-n"].iter()).unwrap();
+        assert!(args.newline == Newline::ForceYes);
+    }
+
+    #[test]
+    fn option_long_newline_regular() {
+        let args = Args::build_from_args(["encrypt", "--newline"].iter()).unwrap();
+        assert!(args.newline == Newline::ForceYes);
+    }
+
+    #[test]
+    fn option_short_no_newline_regular() {
+        let args = Args::build_from_args(["encrypt", "-N"].iter()).unwrap();
+        assert!(args.newline == Newline::ForceNo);
+    }
+
+    #[test]
+    fn option_long_no_newline_regular() {
+        let args = Args::build_from_args(["encrypt", "--no-newline"].iter()).unwrap();
+        assert!(args.newline == Newline::ForceNo);
+    }
+
+    #[test]
+    fn newline_to_bool_force_yes() {
+        assert_eq!(Newline::ForceYes.to_bool(), Some(true));
+    }
+
+    #[test]
+    fn newline_to_bool_force_no() {
+        assert_eq!(Newline::ForceNo.to_bool(), Some(false));
+    }
+
+    #[test]
+    fn newline_to_bool_force_unspecified() {
+        assert_eq!(Newline::Unspecified.to_bool(), None);
     }
 
     #[test]

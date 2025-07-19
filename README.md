@@ -49,6 +49,9 @@ Args:
   -o, --output <FILE>     Write output to file
 
 Options:
+  -n, --newline           Force trailing newline
+  -N, --no-newline        Force no trailing newline
+
   -h, --help              Show help message and exit
   -V, --version           Show the version and exit
 ```

@@ -58,7 +58,10 @@ Try '{bin} -h' for help.",
 fn execute_command(command: cli::Command, args: &cli::Args) -> Result<(), String> {
     let algorithm = args.algorithm.unwrap_or_default();
     let cipher: Box<dyn Cipher> = algorithm.into();
-    let add_newline = args.output == cli::Output::Stdout;
+    let add_newline = args
+        .newline
+        .to_bool()
+        .unwrap_or(args.output == cli::Output::Stdout);
 
     match command {
         cli::Command::KeyGen => cmd::keygen(cipher.as_ref(), add_newline),
@@ -285,6 +288,9 @@ Args:
   -o, --output <FILE>     Write output to file
 
 Options:
+  -n, --newline           Force trailing newline
+  -N, --no-newline        Force no trailing newline
+
   -h, --help              Show help message and exit
   -V, --version           Show the version and exit
 ",
