@@ -50,7 +50,6 @@ use hpke::aead::ChaCha20Poly1305 as ChaCha20Poly1305_;
 use hpke::kdf::HkdfSha256;
 use hpke::kem::{Kem, X25519HkdfSha256};
 use hpke::{Deserializable, OpModeR, OpModeS, Serializable};
-use rand::{SeedableRng, rngs::StdRng};
 use secrecy::{SecretSlice, zeroize::Zeroizing};
 
 use crate::cipher::ChaCha20Poly1305;
@@ -70,8 +69,7 @@ pub struct Hpke;
 impl Cipher for Hpke {
     /// Generate an X25519 32-byte (256-bit) keypair.
     fn generate_key(&self) -> GeneratedKey {
-        let mut csprng = StdRng::from_os_rng();
-        let (sk, pk) = <X25519HkdfSha256 as Kem>::gen_keypair(&mut csprng);
+        let (sk, pk) = <X25519HkdfSha256 as Kem>::gen_keypair();
         GeneratedKey::Asymmetric {
             public: SecretSlice::from(pk.to_bytes().to_vec()),
             private: SecretSlice::from(sk.to_bytes().to_vec()),
@@ -102,13 +100,11 @@ impl Cipher for Hpke {
         // _unique_ to that session/message. If not for the ephemeral
         // keypair, we would always use the _same_ symmetric key,
         // breaking forward secrecy.
-        let mut csprng = StdRng::from_os_rng();
         let (encapsulated_public_key, encryption_context) =
-            hpke::setup_sender::<ChaCha20Poly1305_, HkdfSha256, X25519HkdfSha256, _>(
+            hpke::setup_sender::<ChaCha20Poly1305_, HkdfSha256, X25519HkdfSha256>(
                 &OpModeS::Base,
                 &public_key,
                 INFO,
-                &mut csprng,
             )
             .map_err(|_| Error::Encrypt)?;
 

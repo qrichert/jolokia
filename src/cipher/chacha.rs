@@ -32,9 +32,8 @@
 
 use std::io::{Read, Write};
 
-use aead::generic_array::GenericArray;
-use aead::rand_core::{OsRng, RngCore};
-use aead::stream::{DecryptorBE32, EncryptorBE32};
+use aead::Generate;
+use aead_stream::{DecryptorBE32, EncryptorBE32};
 use chacha20poly1305::aead::KeyInit;
 use chacha20poly1305::{ChaCha20Poly1305 as ChaCha20Poly1305_, Key};
 use secrecy::SecretSlice;
@@ -49,7 +48,7 @@ pub struct ChaCha20Poly1305;
 impl Cipher for ChaCha20Poly1305 {
     /// Generate a 32-byte (256-bit) encryption key.
     fn generate_key(&self) -> GeneratedKey {
-        let key = ChaCha20Poly1305_::generate_key(&mut OsRng);
+        let key = Key::generate();
         GeneratedKey::Symmetric(SecretSlice::from(key.to_vec()))
     }
 
@@ -59,7 +58,7 @@ impl Cipher for ChaCha20Poly1305 {
         reader: &mut dyn Read,
         writer: &mut dyn Write,
     ) -> traits::Result<()> {
-        let key = Key::from_slice(key);
+        let key = <&Key>::try_from(key).map_err(|_| Error::Encrypt)?;
         let cipher = ChaCha20Poly1305_::new(key);
 
         writer
@@ -75,15 +74,13 @@ impl Cipher for ChaCha20Poly1305 {
         //     nonce.
         //
         // ChaCha20-Poly1305 uses a 12-byte nonce, so 12 - 5 = 7 bytes.
-        let mut nonce_prefix = [0u8; 7];
-        OsRng.fill_bytes(&mut nonce_prefix);
-        let nonce_prefix = GenericArray::from_slice(&nonce_prefix);
+        let nonce_prefix = <[u8; 7]>::generate();
 
         writer
-            .write_all(nonce_prefix)
+            .write_all(&nonce_prefix)
             .map_err(|e| Error::Write(e.to_string()))?;
 
-        let mut encryptor = EncryptorBE32::from_aead(cipher, nonce_prefix);
+        let mut encryptor = EncryptorBE32::from_aead(cipher, (&nonce_prefix).into());
 
         let mut buffer = [0u8; 4096];
         while let Ok(n) = reader.read(&mut buffer) {
@@ -133,7 +130,7 @@ impl Cipher for ChaCha20Poly1305 {
             ));
         }
 
-        let key = Key::from_slice(key);
+        let key = <&Key>::try_from(key).map_err(|_| Error::Decrypt)?;
         let cipher = ChaCha20Poly1305_::new(key);
 
         let mut header = [0u8; HEADER.len()];
@@ -148,9 +145,8 @@ impl Cipher for ChaCha20Poly1305 {
         reader
             .read_exact(&mut nonce_prefix)
             .map_err(|e| Error::Read(e.to_string()))?;
-        let nonce_prefix = GenericArray::from_slice(&nonce_prefix);
 
-        let mut decryptor = DecryptorBE32::from_aead(cipher, nonce_prefix);
+        let mut decryptor = DecryptorBE32::from_aead(cipher, (&nonce_prefix).into());
 
         // Extra 16-bytes for the AEAD auth tag at the end of each chunk.
         let mut chunk_buf: Vec<u8> = Vec::with_capacity(4096 + 16);
