@@ -27,7 +27,7 @@ Could not decrypt input.
 You are likely using the wrong key, or the data is corrupted."
             ),
             Self::Algorithm => write!(f, "Incompatible cipher algorithm."),
-            Self::Key => write!(f, "The key is not compatible with the algoritm."),
+            Self::Key => write!(f, "The key is not compatible with the algorithm."),
             Self::Base64Decode(reason) => write!(f, "Could not decode base64: {reason}"),
             Self::Read(reason) => write!(f, "Could not read from input: {reason}"),
             Self::Write(reason) => write!(f, "Could not write to output: {reason}"),
@@ -166,6 +166,14 @@ mod tests {
     use secrecy::ExposeSecret;
 
     use super::*;
+
+    #[test]
+    fn error_key_display() {
+        assert_eq!(
+            Error::Key.to_string(),
+            "The key is not compatible with the algorithm."
+        );
+    }
 
     #[test]
     fn generated_key_get_symmetric() {

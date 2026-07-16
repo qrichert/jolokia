@@ -16,6 +16,8 @@ fn short_help() {
     assert!(output.stdout.contains("decrypt"));
 
     assert!(output.stdout.contains("<MESSAGE>"));
+    assert!(output.stdout.contains("-a, --algorithm <ALGO>"));
+    assert!(output.stdout.contains("default: ChaCha20-Poly1305"));
     assert!(output.stdout.contains("-k, --key"));
     assert!(output.stdout.contains("-r, --raw"));
     assert!(output.stdout.contains("-f, --file"));
@@ -44,6 +46,16 @@ fn long_help() {
     assert!(output.stdout.contains("ChaCha20-Poly1305"));
     assert!(output.stdout.contains("HPKE"));
     assert!(output.stdout.contains("ROT-n"));
+    assert!(!output.stdout.contains("Brainfuck"));
+
+    assert!(output.stdout.contains("is the default algorithm"));
+    assert!(output.stdout.contains("chacha20poly1305"));
+    assert!(output.stdout.contains("rotn, rot"));
+
+    assert!(output.stdout.contains("-a chacha"));
+    assert!(output.stdout.contains("--algorithm hpke"));
+    assert!(output.stdout.contains("-a rot"));
+    assert!(output.stdout.contains("-a bf"));
 }
 
 #[test]

@@ -271,21 +271,22 @@ fn short_help_message() -> String {
 Usage: {bin} [<options>] <command> [<args>]
 
 Commands:
-  keygen                 Generate cipher key
-  encrypt                Encrypt plaintext
-  decrypt                Decrypt ciphertext
+  keygen                  Generate cipher key
+  encrypt                 Encrypt plaintext
+  decrypt                 Decrypt ciphertext
 
 Args:
   <MESSAGE>
-  -k, --key <KEY>        Cipher key (base64)
-  -r, --raw              Handle message as raw binary
-  -f, --file <FILE>      Read message from file
-    -i, --in-place       Write output to input file
-  -o, --output <FILE>    Write output to file
+  -a, --algorithm <ALGO>  Cipher algorithm (default: ChaCha20-Poly1305)
+  -k, --key <KEY>         Cipher key (base64)
+  -r, --raw               Handle message as raw binary
+  -f, --file <FILE>       Read message from file
+    -i, --in-place        Write output to input file
+  -o, --output <FILE>     Write output to file
 
 Options:
-  -h, --help             Show help message and exit
-  -V, --version          Show the version and exit
+  -h, --help              Show help message and exit
+  -V, --version           Show the version and exit
 ",
         description = env!("CARGO_PKG_DESCRIPTION"),
         bin = env!("CARGO_BIN_NAME"),
@@ -310,10 +311,26 @@ What does {package} do?
   lose your key, or if there's a bug, {b}YOUR DATA WILL NOT BE RECOVERABLE{rt}.
 
 Algorithms:
+  ChaCha20-Poly1305 is the default algorithm. Names are case-insensitive,
+  and hyphens are optional.
+
   {u}Name{rt}                 {u}Key Size{rt}               {u}Type{rt}
   ChaCha20-Poly1305    32-bytes (256-bits)    Symmetric
   HPKE                 32-bytes (256-bits)    Asymmetric
   ROT-n                0..255 (insecure)      Symmetric
+
+  Accepted values:
+    ChaCha20-Poly1305: chacha20poly1305, chacha20, chacha, cha20, cha
+    HPKE:              hpke
+    ROT-n:             rotn, rot
+
+  For example:
+
+      {h}${rt} {bin} encrypt \"hello\"
+      {h}${rt} {bin} encrypt \"hello\" -a chacha
+      {h}${rt} {bin} keygen --algorithm hpke
+      {h}${rt} {bin} decrypt \"uryyb\" -a rot --key 13
+      {h}${rt} {bin} encrypt \"hello\" -a bf
 
 Key:
   In {package}, a key is always a base64-encoded string of bytes. The
