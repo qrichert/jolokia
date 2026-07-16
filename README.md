@@ -222,8 +222,8 @@ $ sudo install ./jolokia-* /usr/local/bin/jolokia
 ```console
 $ git clone https://github.com/qrichert/jolokia.git
 $ cd jolokia
-$ make build
-$ sudo make install
+$ just build
+$ sudo just install
 ```
 
 #### Through Cargo
