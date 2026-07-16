@@ -228,12 +228,12 @@ impl Args {
     /// is returned (trailing whitespace gets removed).
     fn maybe_get_key_from_file(maybe_file: &SecretString) -> Option<SecretString> {
         let maybe_file = Path::new(maybe_file.expose_secret());
-        if maybe_file.is_file() {
-            if let Ok(key) = fs::read_to_string(maybe_file) {
-                let key = key.trim_end();
-                if !key.is_empty() {
-                    return Some(SecretString::from(key));
-                }
+        if maybe_file.is_file()
+            && let Ok(key) = fs::read_to_string(maybe_file)
+        {
+            let key = key.trim_end();
+            if !key.is_empty() {
+                return Some(SecretString::from(key));
             }
         }
         None
@@ -377,19 +377,19 @@ mod tests {
     #[test]
     fn option_output_default() {
         let args = Args::build_from_args(["encrypt"].iter()).unwrap();
-        assert!(args.output == Output::Stdout);
+        assert_eq!(args.output, Output::Stdout);
     }
 
     #[test]
     fn option_short_output_regular() {
         let args = Args::build_from_args(["encrypt", "-o", "out.enc"].iter()).unwrap();
-        assert!(args.output == Output::File(PathBuf::from("out.enc")));
+        assert_eq!(args.output, Output::File(PathBuf::from("out.enc")));
     }
 
     #[test]
     fn option_long_output_regular() {
         let args = Args::build_from_args(["encrypt", "--output", "out.enc"].iter()).unwrap();
-        assert!(args.output == Output::File(PathBuf::from("out.enc")));
+        assert_eq!(args.output, Output::File(PathBuf::from("out.enc")));
     }
 
     #[test]
@@ -401,13 +401,13 @@ mod tests {
     #[test]
     fn option_short_file_regular() {
         let args = Args::build_from_args(["encrypt", "-f", "in.txt"].iter()).unwrap();
-        assert!(args.message == Some(Message::File(PathBuf::from("in.txt"))));
+        assert_eq!(args.message, Some(Message::File(PathBuf::from("in.txt"))));
     }
 
     #[test]
     fn option_long_file_regular() {
         let args = Args::build_from_args(["encrypt", "--file", "in.txt"].iter()).unwrap();
-        assert!(args.message == Some(Message::File(PathBuf::from("in.txt"))));
+        assert_eq!(args.message, Some(Message::File(PathBuf::from("in.txt"))));
     }
 
     #[test]

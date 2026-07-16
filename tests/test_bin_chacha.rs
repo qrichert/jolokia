@@ -15,7 +15,7 @@ fn chacha_keygen() {
 
     let key = key.base64_decode().unwrap();
 
-    assert!(key.len() == 32);
+    assert_eq!(key.len(), 32);
 }
 
 #[test]

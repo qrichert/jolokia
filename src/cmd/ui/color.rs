@@ -36,12 +36,12 @@ impl Color {
     // Errors.
 
     #[must_use]
-    pub fn error(string: &str) -> Cow<str> {
+    pub fn error(string: &str) -> Cow<'_, str> {
         Self::color(RED, string)
     }
 
     #[must_use]
-    pub fn warning(string: &str) -> Cow<str> {
+    pub fn warning(string: &str) -> Cow<'_, str> {
         Self::color(YELLOW, string)
     }
 
@@ -70,7 +70,7 @@ impl Color {
     /// };
     /// ```
     #[must_use]
-    pub fn none(string: &str) -> Cow<str> {
+    pub fn none(string: &str) -> Cow<'_, str> {
         Cow::Borrowed(string)
     }
 

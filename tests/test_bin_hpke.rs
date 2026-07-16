@@ -16,8 +16,8 @@ fn hpke_keygen() {
     let pubkey = pubkey.base64_decode().unwrap();
     let privkey = privkey.base64_decode().unwrap();
 
-    assert!(pubkey.len() == 32);
-    assert!(privkey.len() == 32);
+    assert_eq!(pubkey.len(), 32);
+    assert_eq!(privkey.len(), 32);
 }
 
 #[test]
