@@ -124,6 +124,7 @@ struct ColWriter<W: Write, const N: usize> {
 
 impl<W: Write, const N: usize> ColWriter<W, { N }> {
     fn new(writer: W) -> Self {
+        assert!(N > 0, "column width must be greater than zero");
         Self {
             inner: writer,
             line_length: 0,
@@ -133,12 +134,24 @@ impl<W: Write, const N: usize> ColWriter<W, { N }> {
 
 impl<W: Write, const N: usize> Write for ColWriter<W, { N }> {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        for &c in buf {
-            self.inner.write_all(&[c])?;
-            self.line_length += 1;
-            if c == b'\n' {
+        let mut written = 0;
+        while written < buf.len() {
+            let remaining_columns = N - self.line_length;
+            let chunk_length = remaining_columns.min(buf.len() - written);
+            let chunk = &buf[written..written + chunk_length];
+
+            if let Some(newline) = chunk.iter().position(|&c| c == b'\n') {
+                let end = written + newline + 1;
+                self.inner.write_all(&buf[written..end])?;
+                written = end;
                 self.line_length = 0;
-            } else if self.line_length == N {
+                continue;
+            }
+
+            self.inner.write_all(chunk)?;
+            written += chunk.len();
+            self.line_length += chunk.len();
+            if self.line_length == N {
                 self.line_length = 0;
                 self.inner.write_all(b"\n")?;
             }
@@ -151,6 +164,15 @@ impl<W: Write, const N: usize> Write for ColWriter<W, { N }> {
     fn flush(&mut self) -> std::io::Result<()> {
         self.inner.flush()
     }
+}
+
+#[inline]
+fn instruction_run_length(program: &[u8], instruction: usize) -> usize {
+    let operator = program[instruction];
+    program[instruction..]
+        .iter()
+        .take_while(|&&candidate| candidate == operator)
+        .count()
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -517,24 +539,34 @@ Attempting to shift data pointer below 0: {pos} (<).",
                     })?;
                 }
                 b'+' => {
-                    // `ptr` _is_ within `memory` (checked at `>`/`<`).
-                    memory[ptr] = memory[ptr].checked_add(1).ok_or_else(|| {
-                        Error::Other(format!(
+                    let run_length = instruction_run_length(&program, instruction);
+                    let available = usize::from(u8::MAX - memory[ptr]);
+                    if run_length > available {
+                        let pos = instruction + available + 1;
+                        return Err(Error::Other(format!(
                             "\
 Cell overflow.
 Attempting to increment cell {ptr} above 255: {pos} (+).",
-                        ))
-                    })?;
+                        )));
+                    }
+                    memory[ptr] += u8::try_from(run_length).expect("run length is at most 255");
+                    instruction += run_length;
+                    continue;
                 }
                 b'-' => {
-                    // `ptr` _is_ within `memory` (checked at `>`/`<`).
-                    memory[ptr] = memory[ptr].checked_sub(1).ok_or_else(|| {
-                        Error::Other(format!(
+                    let run_length = instruction_run_length(&program, instruction);
+                    let available = usize::from(memory[ptr]);
+                    if run_length > available {
+                        let pos = instruction + available + 1;
+                        return Err(Error::Other(format!(
                             "\
 Cell underflow.
 Attempting to decrement cell {ptr} below 0: {pos} (-).",
-                        ))
-                    })?;
+                        )));
+                    }
+                    memory[ptr] -= u8::try_from(run_length).expect("run length is at most 255");
+                    instruction += run_length;
+                    continue;
                 }
                 b'.' => writer
                     .write_all(&[memory[ptr]])
@@ -543,6 +575,11 @@ Attempting to decrement cell {ptr} below 0: {pos} (-).",
                     // We don't run interactively, so we default to `0`
                     // as most implementations do when there's not data.
                     memory[ptr] = 0;
+                }
+                b'[' if program.get(instruction..instruction + 3) == Some(&b"[-]"[..]) => {
+                    memory[ptr] = 0;
+                    instruction += 3;
+                    continue;
                 }
                 b'[' => {
                     if memory[ptr] == 0 {
@@ -608,6 +645,24 @@ Closing bracket is missing its pair: {pos} (]).",
 pub mod tests {
     use super::*;
 
+    #[derive(Default)]
+    struct CountingWriter {
+        bytes: Vec<u8>,
+        writes: usize,
+    }
+
+    impl Write for CountingWriter {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            self.bytes.extend_from_slice(buf);
+            self.writes += 1;
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
     const TEXT: &str = r#"The quick brown fox jumps over the lazy dog. This sentence contains
 every letter of the alphabet, making it useful for testing font
 rendering and keyboard layouts.
@@ -629,6 +684,18 @@ He paused... then smiled. "Relax. Everything’s fine."
 
 (But it wasn’t.)
 "#;
+
+    #[test]
+    fn brainfuck_col_writer_batches_inner_writes() {
+        let mut inner = CountingWriter::default();
+        {
+            let mut writer = ColWriter::<_, 4>::new(&mut inner);
+            writer.write_all(b"abcdef").unwrap();
+        }
+
+        assert_eq!(inner.bytes, b"abcd\nef");
+        assert_eq!(inner.writes, 3);
+    }
 
     #[test]
     fn brainfuck_encrypt_length() {
@@ -708,6 +775,23 @@ Attempting to decrement cell 0 below 0: 1 (-)."
     }
 
     #[test]
+    fn brainfuck_decrypt_cell_run_errors_at_exact_position() {
+        let ciphertext = b"+".repeat(256);
+
+        let error = Brainfuck.decrypt(&[], &ciphertext).unwrap_err();
+
+        assert_eq!(
+            error,
+            Error::Other(
+                "\
+Cell overflow.
+Attempting to increment cell 0 above 255: 256 (+)."
+                    .to_string()
+            )
+        );
+    }
+
+    #[test]
     fn brainfuck_decrypt_input_sets_cell_to_zero() {
         // Sets cell to `5`, resets to `0`, increment to `33` (!).
         let ciphertext = b"+++,+++++++++++++++++++++++++++++++++.";
@@ -716,6 +800,15 @@ Attempting to decrement cell 0 below 0: 1 (-)."
         dbg!(String::from_utf8_lossy(&decrypted));
 
         // If cell wasn't reset, it would print `$` (36).
+        assert_eq!(decrypted, b"!");
+    }
+
+    #[test]
+    fn brainfuck_decrypt_clear_cell_loop() {
+        let ciphertext = b"+++++++++++++++++++++++++++++++++[-]+++++++++++++++++++++++++++++++++.";
+
+        let decrypted = Brainfuck.decrypt(&[], ciphertext).unwrap();
+
         assert_eq!(decrypted, b"!");
     }
 
@@ -813,8 +906,8 @@ Closing bracket is missing its pair: 4 (])."
 
     #[test]
     fn brainfuck_decrypt_unbalanced_left_bracket_at_end() {
-        // Should ideally give error message "unmatched [" or the like,
-        // and not give any output. Not essential.
+        // Bracket validation intentionally happens during execution,
+        // rather than in a pre-compilation pass.
         let ciphertext = b"+++++[>+++++++>++<<-]>.>.[";
 
         let error = Brainfuck.decrypt(&[], ciphertext).unwrap_err();
@@ -837,8 +930,8 @@ Opening bracket is missing its pair: 26 ([)."
 
     #[test]
     fn brainfuck_decrypt_unbalanced_right_bracket() {
-        // Should ideally give error message "unmatched ]" or the like,
-        // and not give any output. Not essential.
+        // Bracket validation intentionally happens during execution,
+        // rather than in a pre-compilation pass.
         let ciphertext = b"+++++[>+++++++>++<<-]>.>.][";
 
         let error = Brainfuck.decrypt(&[], ciphertext).unwrap_err();
