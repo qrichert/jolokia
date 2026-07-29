@@ -162,6 +162,13 @@ impl<W: Write, const N: usize> Write for ColWriter<W, { N }> {
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
+        // Wrapping only inserts newlines *between* lines, so a partial
+        // last line would leave the program unterminated. It is source
+        // code: it ends with a newline.
+        if self.line_length > 0 {
+            self.inner.write_all(b"\n")?;
+            self.line_length = 0;
+        }
         self.inner.flush()
     }
 }
@@ -389,6 +396,10 @@ pub struct Brainfuck;
 impl Cipher for Brainfuck {
     fn generate_key(&self) -> GeneratedKey {
         GeneratedKey::None
+    }
+
+    fn terminates_output(&self) -> bool {
+        true
     }
 
     fn encrypt_stream(
@@ -725,13 +736,37 @@ He paused... then smiled. "Relax. Everything’s fine."
     }
 
     #[test]
+    fn brainfuck_col_writer_terminates_partial_last_line() {
+        let mut inner = CountingWriter::default();
+        {
+            let mut writer = ColWriter::<_, 4>::new(&mut inner);
+            writer.write_all(b"abcdef").unwrap();
+            writer.flush().unwrap();
+        }
+
+        assert_eq!(inner.bytes, b"abcd\nef\n");
+    }
+
+    #[test]
+    fn brainfuck_col_writer_does_not_terminate_full_last_line_twice() {
+        let mut inner = CountingWriter::default();
+        {
+            let mut writer = ColWriter::<_, 4>::new(&mut inner);
+            writer.write_all(b"abcd").unwrap();
+            writer.flush().unwrap();
+        }
+
+        assert_eq!(inner.bytes, b"abcd\n");
+    }
+
+    #[test]
     fn brainfuck_encrypt_length() {
         let plaintext = TEXT.as_bytes();
 
         let encrypted = Brainfuck.encrypt(&[], plaintext).unwrap();
         dbg!(String::from_utf8_lossy(&encrypted));
 
-        assert_eq!(encrypted.len(), 7701);
+        assert_eq!(encrypted.len(), 7702);
     }
 
     #[test]

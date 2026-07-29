@@ -95,6 +95,15 @@ pub trait Cipher {
     #[must_use]
     fn generate_key(&self) -> GeneratedKey;
 
+    /// Whether `encrypt_stream` terminates its output with a newline.
+    ///
+    /// Callers that append a trailing newline of their own must skip it
+    /// when this is `true`, lest the output gain a blank line.
+    #[must_use]
+    fn terminates_output(&self) -> bool {
+        false
+    }
+
     /// Encrypt plain bytes with key.
     ///
     /// # Errors

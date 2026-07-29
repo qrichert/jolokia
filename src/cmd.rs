@@ -55,7 +55,7 @@ pub fn encrypt<R: Read, W: Write>(
 
     sink.flush().map_err(|e| e.to_string())?;
 
-    if add_newline {
+    if add_newline && !cipher.terminates_output() {
         // Explicit drop needed to reborrow `&mut output`.
         std::mem::drop(sink);
         _ = writeln!(output);

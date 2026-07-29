@@ -26,7 +26,8 @@ fn brainfuck_encrypt() {
 ++++<-]++++++++++++++++++++++++++++++++>[>+>+<<-]>>[<<+>>-]<++>+++++++++
 +<<<<+++++++++++.+++.+++.<.>-----.>.<----.+++++++.+++.++.--------.>.<---
 ------.+++++++++++.---.+++.+++.>.<+.----------.+++++++++++.>.<<----.++++
->-------.<.>+++++++."
+>-------.<.>+++++++.
+"
     );
 }
 
@@ -48,6 +49,29 @@ fn brainfuck_decrypt() {
 
     assert_eq!(output.exit_code, 0);
     assert_eq!(output.stdout, "lorem ipsum dolor sit amet");
+}
+
+#[test]
+fn brainfuck_encrypt_to_file_ends_with_newline() {
+    let file = get_text_file("brainfuck_encrypt_to_file_ends_with_newline");
+    let file_path = file.to_string_lossy().to_string();
+    let file_path_encrypted = file_path.clone() + ".enc";
+
+    let output = run(&[
+        "encrypt",
+        "-a",
+        "brainfuck",
+        "-f",
+        &file_path,
+        "-o",
+        &file_path_encrypted,
+    ]);
+
+    dbg!(&output);
+
+    assert_eq!(output.exit_code, 0);
+    let program = std::fs::read(&file_path_encrypted).unwrap();
+    assert!(program.ends_with(b"\n"));
 }
 
 #[test]
