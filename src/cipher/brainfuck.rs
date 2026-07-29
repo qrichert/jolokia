@@ -472,12 +472,14 @@ impl Cipher for Brainfuck {
         reader
             .read_to_end(&mut program)
             .map_err(|e| Error::Read(e.to_string()))?;
+        // Newlines are ignored instructions and excluded from reported
+        // instruction positions.
+        program.retain(|&instruction| instruction != b'\n');
 
         let mut memory = vec![0u8; 8]; // We only use 7 registers.
         let mut ptr: usize = 0;
         let mut instruction = 0;
         let mut loop_stack = Vec::new();
-        let mut line = 1;
         loop {
             if instruction == program.len() {
                 // `loop stack` _must_ be empty at this point.
@@ -493,7 +495,7 @@ Opening bracket is missing its pair: {} ([).",
                 break;
             }
 
-            let pos = (instruction + 1) - (line - 1);
+            let pos = instruction + 1;
             match program[instruction] {
                 b'>' => {
                     ptr = ptr
@@ -592,7 +594,6 @@ Closing bracket is missing its pair: {pos} (]).",
                         loop_stack.pop().expect("there is a `last()`");
                     }
                 }
-                b'\n' => line += 1,
                 _ => (),
             }
 
@@ -716,6 +717,23 @@ Attempting to decrement cell 0 below 0: 1 (-)."
 
         // If cell wasn't reset, it would print `$` (36).
         assert_eq!(decrypted, b"!");
+    }
+
+    #[test]
+    fn brainfuck_decrypt_newline_position_is_execution_independent() {
+        let ciphertext = b"+++++[>++++++++++<-]>[\n-]-";
+
+        let error = Brainfuck.decrypt(&[], ciphertext).unwrap_err();
+
+        assert_eq!(
+            error,
+            Error::Other(
+                "\
+Cell underflow.
+Attempting to decrement cell 1 below 0: 25 (-)."
+                    .to_string()
+            )
+        );
     }
 
     #[test]
