@@ -216,6 +216,29 @@ impl Delta {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+struct Clear(u8);
+
+impl Clear {
+    #[inline]
+    fn for_char(character: u8) -> Self {
+        Self(character)
+    }
+
+    #[inline]
+    fn len(self) -> usize {
+        3 + usize::from(self.0) // `[-]` followed by `self.0` increments.
+    }
+
+    #[inline]
+    fn write_to(self, buf: &mut Vec<u8>) {
+        buf.extend(b"[-]");
+        for _ in 0..self.0 {
+            buf.push(b'+');
+        }
+    }
+}
+
 /// Optimize non-letter characters.
 ///
 /// Those have lower ASCII codes and necessitate big jumps. Instead, we
@@ -321,7 +344,7 @@ impl Opti {
     }
 
     /// Remove register shifts that cancel each other.
-    fn remove_redundant_shifts(output: &[u8]) -> Vec<u8> {
+    fn remove_redundant_shifts(output: &[u8], shift_balance: &mut i32) -> Vec<u8> {
         fn tally(shift_balance: i32) -> impl Iterator<Item = u8> {
             let shift_tally =
                 usize::try_from(shift_balance.unsigned_abs()).expect("platform not supported");
@@ -342,23 +365,20 @@ impl Opti {
         }
 
         let mut result = Vec::with_capacity(output.len());
-        let mut shift_balance: i32 = 0;
 
         for &c in output {
             match c {
-                b'>' => shift_balance += 1,
-                b'<' => shift_balance -= 1,
+                b'>' => *shift_balance += 1,
+                b'<' => *shift_balance -= 1,
                 _ => {
                     // Write the minimal amount of shifts.
-                    result.extend(tally(shift_balance));
-                    shift_balance = 0;
+                    result.extend(tally(*shift_balance));
+                    *shift_balance = 0;
 
                     result.push(c);
                 }
             }
         }
-        // Flush any remaining shifts.
-        result.extend(tally(shift_balance));
 
         result
     }
@@ -382,9 +402,14 @@ impl Cipher for Brainfuck {
 
         // Init character register 1 to 97 (a).
         let mut previous_char = 97;
+        let mut shift_balance = 0;
 
+        let initialization = Opti::remove_redundant_shifts(
+            Opti::registers_initialization().as_bytes(),
+            &mut shift_balance,
+        );
         writer
-            .write_all(Opti::registers_initialization().as_bytes())
+            .write_all(&initialization)
             .map_err(|e| Error::Write(e.to_string()))?;
 
         let mut buffer = [0u8; 4096];
@@ -402,16 +427,20 @@ impl Cipher for Brainfuck {
 
             for &c in &buffer[..n] {
                 let delta = Delta::between(previous_char, c);
+                let clear = Clear::for_char(c);
                 let opti = Opti::for_char(c);
 
                 if opti.len() < delta.len() {
                     // Optimized delta is shorter than regular delta.
                     opti.write_to(&mut output);
                 } else {
-                    // Regular delta is shorter than optimized delta.
-                    // This can happen if say there are two spaces in
-                    // sequence, then the regular delta is zero.
-                    delta.write_to(&mut output);
+                    // A stateful transition is shorter than the cached
+                    // character optimization.
+                    if clear.len() < delta.len() {
+                        clear.write_to(&mut output);
+                    } else {
+                        delta.write_to(&mut output);
+                    }
 
                     // In the optimized version we don't change the
                     // character register, only in the regular one.
@@ -422,9 +451,7 @@ impl Cipher for Brainfuck {
                 }
             }
 
-            // This won't work if the shifts cross chunks, but that's
-            // not the common case.
-            let output = Opti::remove_redundant_shifts(&output);
+            let output = Opti::remove_redundant_shifts(&output, &mut shift_balance);
 
             writer
                 .write_all(&output)
@@ -705,6 +732,34 @@ He paused... then smiled. "Relax. Everything’s fine."
         dbg!(String::from_utf8_lossy(&encrypted));
 
         assert_eq!(encrypted.len(), 7701);
+    }
+
+    #[test]
+    fn brainfuck_encrypt_clears_cell_for_large_downward_delta() {
+        let encrypted = Brainfuck.encrypt(&[], b"\0").unwrap();
+        let program: Vec<_> = encrypted
+            .into_iter()
+            .filter(|&instruction| instruction != b'\n')
+            .collect();
+
+        assert!(program.ends_with(b"[-]."));
+    }
+
+    #[test]
+    fn brainfuck_encrypt_cancels_shifts_across_chunks() {
+        let plaintext = b"e".repeat(4097);
+
+        let encrypted = Brainfuck.encrypt(&[], &plaintext).unwrap();
+        let program: Vec<_> = encrypted
+            .into_iter()
+            .filter(|&instruction| instruction != b'\n')
+            .collect();
+
+        assert!(
+            !program
+                .windows(2)
+                .any(|instructions| matches!(instructions, b"<>" | b"><"))
+        );
     }
 
     #[test]
