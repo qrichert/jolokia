@@ -496,14 +496,14 @@ Opening bracket is missing its pair: {} ([).",
             let pos = (instruction + 1) - (line - 1);
             match program[instruction] {
                 b'>' => {
-                    // Must grow to prevent overflow.
-                    if memory.len() == ptr {
-                        // Give a fair bit of room.
-                        memory.extend([0u8; 4096]);
-                    }
                     ptr = ptr
                         .checked_add(1)
                         .expect("memory allocation will fail first");
+                    // Must grow before accessing the new cell.
+                    if ptr == memory.len() {
+                        // Give a fair bit of room.
+                        memory.extend([0u8; 4096]);
+                    }
                 }
                 b'<' => {
                     ptr = ptr.checked_sub(1).ok_or_else(|| {
@@ -755,6 +755,15 @@ Closing bracket is missing its pair: 4 (])."
     }
 
     // Interpreter tests straight outta <https://brainfuck.org/tests.b>.
+
+    #[test]
+    fn brainfuck_decrypt_memory_grows_at_initial_boundary() {
+        let ciphertext = b">>>>>>>>+.";
+
+        let decrypted = Brainfuck.decrypt(&[], ciphertext).unwrap();
+
+        assert_eq!(decrypted, b"\x01");
+    }
 
     #[test]
     fn brainfuck_decrypt_memory_length() {
