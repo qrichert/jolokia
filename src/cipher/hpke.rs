@@ -30,7 +30,7 @@
 //!   required for decryption. Its length is encoded as a 2-byte
 //!   big-endian integer.
 //!
-//! - The actual **payload** is encrypted by the [`ChaCha20-Poly1305`]
+//! - The actual **payload** is encrypted by the [`ChaCha20Poly1305`]
 //!   stream implementation. See its documentation for details on
 //!   chunking, nonce structure, and framing.
 //!

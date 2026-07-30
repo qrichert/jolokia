@@ -1,6 +1,6 @@
 [package]
 name = "jolokia"
-version = "0.9.0"
+version = "0.9.1"
 edition = "2024"
 authors = ["Quentin Richert <noreply@richert.co>"]
 description = "Simple, strong encryption."
@@ -25,13 +25,13 @@ aead = { version = "0.6.1", features = ["getrandom"] }
 # STREAM online authenticated encryption construction.
 aead-stream = { version = "0.6.0", features = ["alloc"] }
 # Human-readable encryption.
-base64 = "0.22.1"
+base64 = "0.23.0"
 # ChaCha20-Poly1305 algorithm implementation.
 chacha20poly1305 = "0.11.0"
 # HPKE scheme implementation.
 hpke = "0.14.0"
 # Output text through a pager.
-lessify = "0.5.0"
+lessify = "0.6.0"
 # Zeroize secrets.
 secrecy = "0.10.3"
 
