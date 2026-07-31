@@ -7,8 +7,8 @@ description = "Simple, strong encryption."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/qrichert/jolokia.git"
 readme = "README.md"
-keywords = ["cryptography", "cli"]
-categories = ["command-line-utilities"]
+keywords = ["encryption", "encryption-cli", "file-encryption", "chacha20-poly1305", "hpke"]
+categories = ["command-line-utilities", "cryptography"]
 
 [profile.release]
 codegen-units = 1

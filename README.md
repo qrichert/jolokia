@@ -228,27 +228,18 @@ file size possible.
 
 ## Installation
 
-### Directly
-
-```console
-$ wget https://github.com/qrichert/jolokia/releases/download/X.X.X/jolokia-X.X.X-xxx
-$ sudo install ./jolokia-* /usr/local/bin/jolokia
-```
-
-### Manual Build
-
-#### System-wide
-
-```console
-$ git clone https://github.com/qrichert/jolokia.git
-$ cd jolokia
-$ just build
-$ sudo just install
-```
-
-#### Through Cargo
+Install from [crates.io] with Cargo:
 
 ```shell
 cargo install jolokia
-cargo install --git https://github.com/qrichert/jolokia.git
 ```
+
+Pre-built binaries for Linux and macOS are available on the [latest
+GitHub release].
+
+[Documentation] is available on docs.rs.
+
+[crates.io]: https://crates.io/crates/jolokia
+[latest GitHub release]:
+  https://github.com/qrichert/jolokia/releases/latest
+[Documentation]: https://docs.rs/jolokia
