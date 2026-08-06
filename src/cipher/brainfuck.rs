@@ -33,7 +33,7 @@
 //!
 //! - Base text: 810
 //! - Naive output: 27779
-//! - Optimized ouput: 7701
+//! - Optimized output: 7702
 //!
 //! Text:
 //!
@@ -492,8 +492,8 @@ impl Cipher for Brainfuck {
     ///   for other use cases (especially useful in tests for us).
     /// - Cells/registers range from `0` to `255`. Memory is essentially
     ///   a byte array, with each cell being `1-byte`.
-    /// - Any attempt to decrement the cell below `0`, or increment the
-    ///   cell above `255`, will fail.
+    /// - Incrementing or decrementing a cell past its `0` to `255`
+    ///   range will wrap around.
     /// - Inputting data will set the cell/register value to `0`. We
     ///   don't output `,` in `encrypt()`, and we don't run programs
     ///   interactively; this is meant for decryption.
@@ -577,32 +577,18 @@ Attempting to shift data pointer below 0: {pos} (<).",
                     })?;
                 }
                 b'+' => {
+                    // Brainfuck does not require cell wrapping, but many programs
+                    // assume 8-bit wrapping semantics, so we choose them intentionally.
                     let run_length = instruction_run_length(&program, instruction);
-                    let available = usize::from(u8::MAX - memory[ptr]);
-                    if run_length > available {
-                        let pos = instruction + available + 1;
-                        return Err(Error::Other(format!(
-                            "\
-Cell overflow.
-Attempting to increment cell {ptr} above 255: {pos} (+).",
-                        )));
-                    }
-                    memory[ptr] += u8::try_from(run_length).expect("run length is at most 255");
+                    let delta = u8::try_from(run_length % 256).expect("remainder is at most 255");
+                    memory[ptr] = memory[ptr].wrapping_add(delta);
                     instruction += run_length;
                     continue;
                 }
                 b'-' => {
                     let run_length = instruction_run_length(&program, instruction);
-                    let available = usize::from(memory[ptr]);
-                    if run_length > available {
-                        let pos = instruction + available + 1;
-                        return Err(Error::Other(format!(
-                            "\
-Cell underflow.
-Attempting to decrement cell {ptr} below 0: {pos} (-).",
-                        )));
-                    }
-                    memory[ptr] -= u8::try_from(run_length).expect("run length is at most 255");
+                    let delta = u8::try_from(run_length % 256).expect("remainder is at most 255");
+                    memory[ptr] = memory[ptr].wrapping_sub(delta);
                     instruction += run_length;
                     continue;
                 }
@@ -829,56 +815,31 @@ Attempting to shift data pointer below 0: 1 (<)."
     }
 
     #[test]
-    fn brainfuck_decrypt_cell_overflow() {
-        let ciphertext = b"+++++[>++++++++++<-]>+[<+++++>-]<+";
+    fn brainfuck_decrypt_cell_overflow_wraps() {
+        let ciphertext = b"+++++[>++++++++++<-]>+[<+++++>-]<+.";
 
-        let error = Brainfuck.decrypt(&[], ciphertext).unwrap_err();
-        dbg!(&error);
+        let decrypted = Brainfuck.decrypt(&[], ciphertext).unwrap();
 
-        assert_eq!(
-            error,
-            Error::Other(
-                "\
-Cell overflow.
-Attempting to increment cell 0 above 255: 34 (+)."
-                    .to_string()
-            )
-        );
+        assert_eq!(decrypted, b"\0");
     }
 
     #[test]
-    fn brainfuck_decrypt_cell_underflow() {
-        let ciphertext = b"-";
+    fn brainfuck_decrypt_cell_underflow_wraps() {
+        let ciphertext = b"-.";
 
-        let error = Brainfuck.decrypt(&[], ciphertext).unwrap_err();
-        dbg!(&error);
+        let decrypted = Brainfuck.decrypt(&[], ciphertext).unwrap();
 
-        assert_eq!(
-            error,
-            Error::Other(
-                "\
-Cell underflow.
-Attempting to decrement cell 0 below 0: 1 (-)."
-                    .to_string()
-            )
-        );
+        assert_eq!(decrypted, b"\xff");
     }
 
     #[test]
-    fn brainfuck_decrypt_cell_run_errors_at_exact_position() {
-        let ciphertext = b"+".repeat(256);
+    fn brainfuck_decrypt_cell_run_wraps() {
+        let mut ciphertext = b"+".repeat(256);
+        ciphertext.push(b'.');
 
-        let error = Brainfuck.decrypt(&[], &ciphertext).unwrap_err();
+        let decrypted = Brainfuck.decrypt(&[], &ciphertext).unwrap();
 
-        assert_eq!(
-            error,
-            Error::Other(
-                "\
-Cell overflow.
-Attempting to increment cell 0 above 255: 256 (+)."
-                    .to_string()
-            )
-        );
+        assert_eq!(decrypted, b"\0");
     }
 
     #[test]
@@ -903,20 +864,12 @@ Attempting to increment cell 0 above 255: 256 (+)."
     }
 
     #[test]
-    fn brainfuck_decrypt_newline_position_is_execution_independent() {
-        let ciphertext = b"+++++[>++++++++++<-]>[\n-]-";
+    fn brainfuck_decrypt_wraps_across_newlines() {
+        let ciphertext = b"-\n+.";
 
-        let error = Brainfuck.decrypt(&[], ciphertext).unwrap_err();
+        let decrypted = Brainfuck.decrypt(&[], ciphertext).unwrap();
 
-        assert_eq!(
-            error,
-            Error::Other(
-                "\
-Cell underflow.
-Attempting to decrement cell 1 below 0: 25 (-)."
-                    .to_string()
-            )
-        );
+        assert_eq!(decrypted, b"\0");
     }
 
     #[test]
