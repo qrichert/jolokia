@@ -141,7 +141,7 @@ pub trait Cipher {
         writer: &mut dyn Write,
     ) -> Result<()>;
 
-    /// Encrypt stream of plain bytes with key.
+    /// Decrypt stream of ciphered bytes with key.
     ///
     /// # Errors
     ///
